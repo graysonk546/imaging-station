@@ -18,7 +18,7 @@ class My_App(QtWidgets.QMainWindow):
 
         self.enable_camera.clicked.connect(self.SLOT_enable_camera)
         self._is_cam_enabled = False
-        self.handler = Handler()
+        self.handler = Handler(self.camera_feed)
 
         # Setting up camera
         with Vimba.get_instance() as vimba:
@@ -28,6 +28,7 @@ class My_App(QtWidgets.QMainWindow):
             self.cam = cams[0]
             with self.cam as cam:
                 self.setup_camera(cam)
+                # cam.stop_streaming()
                 
 
     def setup_camera(self, cam: Camera):
@@ -84,15 +85,17 @@ class My_App(QtWidgets.QMainWindow):
         else:
             with Vimba.get_instance() as vimba:
                 with self.cam as cam:
-                    print("Enabling")
+                    print("Enabling")              
                     cam.start_streaming(handler=self.handler, buffer_count=10)
+                    self.handler.shutdown_event.wait(10)
             self._is_cam_enabled = True
             self.enable_camera.setText("Disable Camera")
 
 
 class Handler:
-    def __init__(self):
+    def __init__(self, camera_feed):
         print("Created Handler")
+        self.ui_camera_feed = camera_feed
         self.shutdown_event = threading.Event()
 
     def convert_cv_to_pixmap(self, cv_img):
@@ -114,8 +117,8 @@ class Handler:
         elif frame.get_status() == FrameStatus.Complete:
             print('{} acquired {}'.format(cam, frame), flush=True)
 
-            pixmap = self.convert_cv_to_pixmap(frame.as_open_cv_image())
-            self.camera_feed.setPixmap(pixmap)
+            pixmap = self.convert_cv_to_pixmap(frame.as_opencv_image())
+            self.ui_camera_feed.setPixmap(pixmap)
 
         cam.queue_frame(frame)
 
