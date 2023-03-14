@@ -14,7 +14,7 @@
    <string>Data Collection GUI</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QPushButton" name="takephoto">
+   <widget class="QPushButton" name="take_photo">
     <property name="geometry">
      <rect>
       <x>60</x>
@@ -27,7 +27,7 @@
      <string>Capture Image</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="enablecam">
+   <widget class="QPushButton" name="enable_camera">
     <property name="geometry">
      <rect>
       <x>370</x>
@@ -40,7 +40,7 @@
      <string>Enable Camera</string>
     </property>
    </widget>
-   <widget class="QLabel" name="LiveImageLabel">
+   <widget class="QLabel" name="camera_feed">
     <property name="geometry">
      <rect>
       <x>70</x>
