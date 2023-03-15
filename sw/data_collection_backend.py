@@ -18,7 +18,6 @@ class My_App(QtWidgets.QMainWindow):
 
         self.enable_camera.clicked.connect(self.SLOT_enable_camera)
         self._is_cam_enabled = False
-        self.handler = Handler(self.camera_feed)
 
         # Setting up camera
         with Vimba.get_instance() as vimba:
@@ -28,8 +27,10 @@ class My_App(QtWidgets.QMainWindow):
             self.cam = cams[0]
             with self.cam as cam:
                 self.setup_camera(cam)
-                # cam.stop_streaming()
-                
+
+        self._timer = QtCore.QTimer(self)
+        self._timer.timeout.connect(self.SLOT_query_camera)
+        self._timer.setInterval(5) 
 
     def setup_camera(self, cam: Camera):
         with cam:
@@ -76,27 +77,13 @@ class My_App(QtWidgets.QMainWindow):
 
     def SLOT_enable_camera(self):
         if self._is_cam_enabled:
-            with Vimba.get_instance() as vimba:
-                with self.cam as cam:
-                    print("Disabling")
-                    cam.stop_streaming()
+            self._timer.stop()
             self._is_cam_enabled = False
             self.enable_camera.setText("Enable Camera")
         else:
-            with Vimba.get_instance() as vimba:
-                with self.cam as cam:
-                    print("Enabling")              
-                    cam.start_streaming(handler=self.handler, buffer_count=10)
-                    self.handler.shutdown_event.wait(10)
+            self._timer.start()
             self._is_cam_enabled = True
             self.enable_camera.setText("Disable Camera")
-
-
-class Handler:
-    def __init__(self, camera_feed):
-        print("Created Handler")
-        self.ui_camera_feed = camera_feed
-        self.shutdown_event = threading.Event()
 
     def convert_cv_to_pixmap(self, cv_img):
         cv_img = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
@@ -105,23 +92,29 @@ class Handler:
         q_img = QtGui.QImage(cv_img.data, width, height, bytesPerLine, QtGui.QImage.Format_RGB888)
         return QtGui.QPixmap.fromImage(q_img)
 
-    def __call__(self, cam: Camera, frame: Frame):
-        print("Received frame maybe")
-        ENTER_KEY_CODE = 13
+    def shrink(self, cv_img):
+        width = int(cv_img.shape[1] * 5 / 100)
+        height = int(cv_img.shape[0] * 5 / 100)
+        
+        resized = cv2.resize(cv_img, (width, height), interpolation = cv2.INTER_AREA)
+        return resized
 
-        key = cv2.waitKey(1)
-        if key == ENTER_KEY_CODE:
-            self.shutdown_event.set()
-            return
 
-        elif frame.get_status() == FrameStatus.Complete:
-            print('{} acquired {}'.format(cam, frame), flush=True)
+    def SLOT_query_camera(self):
+        with Vimba.get_instance() as vimba:
+            with self.cam as cam:
+                try:
+                    frame = cam.get_frame(timeout_ms = 10000)
+                    print("Frame acquired")
+                except VimbaTimeout as e:
+                    print("Frame acquisition timed out: " + str(e))
+                    return
 
-            pixmap = self.convert_cv_to_pixmap(frame.as_opencv_image())
-            self.ui_camera_feed.setPixmap(pixmap)
-
-        cam.queue_frame(frame)
-
+        print(f"Size of photo is {frame.get_height()} by {frame.get_width()}")
+        resized_photo = self.shrink(frame.as_opencv_image())
+        print(f"Resized photo dimensions are {resized_photo.shape}")
+        pixmap = self.convert_cv_to_pixmap(resized_photo)
+        self.camera_feed.setPixmap(pixmap)
 
 
 if __name__ == "__main__":
