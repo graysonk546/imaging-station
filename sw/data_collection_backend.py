@@ -116,7 +116,6 @@ class My_App(QtWidgets.QMainWindow):
         pixmap = self.convert_cv_to_pixmap(resized_photo)
         self.camera_feed.setPixmap(pixmap)
 
-
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     myApp = My_App()

@@ -43,10 +43,10 @@
    <widget class="QLabel" name="camera_feed">
     <property name="geometry">
      <rect>
-      <x>70</x>
-      <y>40</y>
-      <width>411</width>
-      <height>251</height>
+      <x>30</x>
+      <y>10</y>
+      <width>701</width>
+      <height>391</height>
      </rect>
     </property>
     <property name="text">
