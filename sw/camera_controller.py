@@ -12,9 +12,9 @@ if __name__== "__main__":
     s.flush()
     while True:
         # wait on serial communication
-        while s.in_waiting > 0:
-
-            s.readline().decode("ascii")
+        if s.in_waiting > 0:
+            sleep(1)
+            print(s.readline().decode("ascii"))
             # take picture if you get a message
             print("take picture")
             # send a response

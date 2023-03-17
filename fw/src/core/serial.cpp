@@ -112,3 +112,8 @@ void serial_echo(serial_id_t serialId)
     }
     s.connection.print(CMD_EOL);
 }
+
+char* serial_getMessage(serial_id_t serialId)
+{
+    return serial_arr[serialId].message.line;
+}

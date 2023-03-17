@@ -64,4 +64,6 @@ bool serial_handleByte(serial_id_t serialId, char byte);
 
 void serial_echo(serial_id_t serialId);
 
+char* serial_getMessage(serial_id_t serialId);
+
 #endif
