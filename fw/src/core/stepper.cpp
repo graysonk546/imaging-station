@@ -13,7 +13,7 @@ static stepper_t stepper_arr[] =
     }
 };
 
-static Stepper plane = Stepper(STEPS, PA5, PA6);
+// static Stepper plane = Stepper(STEPS, PA5, PA6);
 
 void stepper_rotate(stepper_id_t stepperId, uint16_t angle)
 {

@@ -35,6 +35,15 @@ typedef struct {
     uint8_t index;
 } message_t;
 
+typedef struct {
+    message_t message;
+    HardwareSerial connection;
+} serial_conn_t;
+
+typedef enum {
+    RPI
+} serial_id_t;
+
 /*******************************************************************************
 *                               Variables
 *******************************************************************************/
@@ -43,12 +52,16 @@ typedef struct {
 *                               Functions
 *******************************************************************************/
 
-void serial_init();
+void serial_init(serial_id_t serialId);
 
-void serial_send(char* bytes);
+bool serial_available(serial_id_t serialId); 
 
-bool serial_handleByte(char byte);
+char serial_read(serial_id_t serialId);
 
-void serial_echo();
+void serial_send(serial_id_t serialId, char* bytes);
+
+bool serial_handleByte(serial_id_t serialId, char byte);
+
+void serial_echo(serial_id_t serialId);
 
 #endif

@@ -28,12 +28,25 @@
 *                               Variables
 *******************************************************************************/
 
-static message_t message
+// static message_t message
+// {
+//     .index = 0
+// };
+
+static serial_conn_t serial_arr[] = 
 {
-    .index = 0
+    {
+        .message =
+        {
+            .index = 0
+        },
+        .connection = new HardwareSerial(USART2)
+    }
 };
 
-HardwareSerial Serial2(USART2);
+// HardwareSerial Serial2 = new HardwareSerial(USART2);
+
+// HardwareSerial Serial2(USART2);
 
 // static char* args[COMMAND_ARGS_MAX_LEN];
 // static char* tokCommand[(COMMAND_ARGS_MAX_LEN + 1)];
@@ -42,41 +55,60 @@ HardwareSerial Serial2(USART2);
 *                               Functions
 *******************************************************************************/
 
-void serial_init()
+// could init, read, and send methods be replaced with a single getter method 
+//    for the specific serial_conn_t in the serial_arr?
+
+void serial_init(serial_id_t serialId)
 {
     // Begin the serial connection
-    Serial2.begin(BAUD_RATE);
+    serial_arr[serialId].connection.begin(BAUD_RATE);
+
+    // Serial2.begin(BAUD_RATE);
 }
 
-void serial_send(char* bytes)
+bool serial_available(serial_id_t serialId)
 {
-    Serial2.println(bytes);
+    return serial_arr[serialId].connection.available() > 0;
 }
 
-bool serial_handleByte(char byte)
+char serial_read(serial_id_t serialId)
 {
+    return serial_arr[serialId].connection.read();
+}
+
+void serial_send(serial_id_t serialId, char* bytes)
+{
+    serial_arr[serialId].connection.println(bytes);
+    // Serial2.println(bytes);
+}
+
+bool serial_handleByte(serial_id_t serialId, char byte)
+{   
+    serial_conn_t s = serial_arr[serialId];
+
     if (byte == CMD_EOL)
     {
-        message.line[message.index] = STRING_EOL;
-        message.index = 0;
+        s.message.line[s.message.index] = STRING_EOL;
+        s.message.index = 0;
         // we have reached the end of the message
         return true;
     }
     else
     {
-        message.line[message.index++] = byte;
+        s.message.line[s.message.index++] = byte;
         // we have not yet reached the end of the message
         return false;
     }
 }
 
-void serial_echo()
+void serial_echo(serial_id_t serialId)
 {
+    serial_conn_t s = serial_arr[serialId];
     uint8_t i = 0;
-    while (message.line[i] != STRING_EOL)
+    while (s.message.line[i] != STRING_EOL)
     {
-        Serial2.print(message.line[i]);
+        s.connection.print(s.message.line[i]);
         i++;
     }
-    Serial2.print(CMD_EOL);
+    s.connection.print(CMD_EOL);
 }
