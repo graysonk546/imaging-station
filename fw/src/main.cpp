@@ -10,6 +10,7 @@ void setup()
     serial_init(COMPUTER);
     serial_init(RPI);
 
+    // initilize the servo and stepper motor
     servo_init(ARM, PB1);
     stepper_setSpeed(PLANE, 100);
 
@@ -33,31 +34,34 @@ static char picMessage[] = "picture";
 
 void loop() 
 {
-    if (serial_available(RPI))
-    {
-        if (serial_handleByte(RPI, serial_read(RPI)))
-        {
-            serial_echo(RPI);
-            // stepper_rotate(PLANE, 360);
-            // delay(5);
-            // char message[] = "{\"data\": \"pic\"}";
-            // serial_send(RPI, message);
-        }
-    }
-
     // main control loop switch statement
     switch (state)
     {
         case ROT_ARM:
+            serial_send(COMPUTER, "rotating arm down");
             // rotate arm update arm position
+            servo_rotateTo(ARM, 156);
+            state = TAKE_PIC;
             break;
 
         case ROT_PLANE:
+            serial_send(COMPUTER, "rotating plane");
             // rotate plane update plane position
+            if (stepper_getAngle(PLANE) > 360)
+            {
+                state = WAIT_ON_RPI;
+            }
+            else
+            {
+                stepper_rotate(PLANE, 360);
+                servo_rotateTo(ARM, 11);
+                state = TAKE_PIC;
+            }
             break;
 
         case WAIT_ON_PIC:
             // wait until there is response from the RPi
+            serial_send(COMPUTER, "waiting on finished pic");
             if (serial_available(RPI))
             {
                 if (serial_handleByte(RPI, serial_read(RPI)))
@@ -69,7 +73,7 @@ void loop()
                         // state determination
                         if (servo_getAngle(ARM) == 11)
                         {
-                            state = ROT_PLANE;
+                            state = ROT_ARM;
                         }
                         else if (stepper_getAngle(PLANE) < 360)
                         {
@@ -87,6 +91,7 @@ void loop()
 
         case TAKE_PIC:
             // serial send take pic
+            serial_send(COMPUTER, "requesting picture from rpi");
             serial_send(RPI, picMessage);
             state = WAIT_ON_PIC;
             break;
@@ -99,17 +104,11 @@ void loop()
                 {
                     // check whether message is the start command
                     // if so, change the state to take pic
-                    
                     if (strcmp("start", serial_getMessage(RPI)) == 0)
                     {
+                        serial_send(COMPUTER, "starting control loop");
                         state = TAKE_PIC;
                     }
-
-                    // serial_echo(RPI);
-                    // stepper_rotate(PLANE, 360);
-                    // delay(5);
-                    // char message[] = "{\"data\": \"pic\"}";
-                    // serial_send(RPI, message);
                 }
             }
             break;

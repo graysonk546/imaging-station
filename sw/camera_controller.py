@@ -18,7 +18,5 @@ if __name__== "__main__":
             # take picture if you get a message
             print("take picture")
             # send a response
-            sleep(5)
             s.write(b"finished\n")
-            sleep(5)
             s.flush()

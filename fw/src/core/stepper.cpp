@@ -18,7 +18,7 @@ static stepper_t stepper_arr[] =
 void stepper_rotate(stepper_id_t stepperId, uint16_t angle)
 {
     stepper_arr[stepperId].stepper.step((int16_t) angle / STEP_ANGLE);
-    stepper_arr[stepperId].angle += angle;
+    stepper_arr[stepperId].angle += angle / 6;
 }
 
 uint16_t stepper_getAngle(stepper_id_t stepperId) 
