@@ -7,9 +7,12 @@
 void setup() 
 {
     // make sure system is in a state where it is ready to take pictures here
+    serial_init(COMPUTER);
     serial_init(RPI);
+
     servo_init(ARM, PB1);
     stepper_setSpeed(PLANE, 100);
+
     // enable pin of stepper
     pinMode(PA7, OUTPUT);
     digitalWrite(PA7, LOW);
@@ -24,26 +27,29 @@ typedef enum
     WAIT_ON_RPI
 } state_t;
 
-static state_t state = ROT_ARM;
+static state_t state = WAIT_ON_RPI;
 
 static char picMessage[] = "picture";
 
 void loop() 
 {
-    // stepper_rotate(PLANE, 360);
-    // delay(5000);
-
-    // implement logic where the RPi and Bluepill talk back and forth, rotate 
-    //  plane -> take picture -> rotate plane... until 360 degrees.
-
-
-
+    if (serial_available(RPI))
+    {
+        if (serial_handleByte(RPI, serial_read(RPI)))
+        {
+            serial_echo(RPI);
+            // stepper_rotate(PLANE, 360);
+            // delay(5);
+            // char message[] = "{\"data\": \"pic\"}";
+            // serial_send(RPI, message);
+        }
+    }
 
     // main control loop switch statement
     switch (state)
     {
         case ROT_ARM:
-            // rotatie arm update arm position
+            // rotate arm update arm position
             break;
 
         case ROT_PLANE:
@@ -93,7 +99,7 @@ void loop()
                 {
                     // check whether message is the start command
                     // if so, change the state to take pic
-
+                    
                     if (strcmp("start", serial_getMessage(RPI)) == 0)
                     {
                         state = TAKE_PIC;
@@ -108,17 +114,4 @@ void loop()
             }
             break;
     }
-
-    // handling serial data
-    // if (serial_available(RPI))
-    // {
-    //     if (serial_handleByte(RPI, serial_read(RPI)))
-    //     {
-    //         serial_echo(RPI);
-    //         stepper_rotate(PLANE, 360);
-    //         delay(5);
-    //         char message[] = "{\"data\": \"pic\"}";
-    //         serial_send(RPI, message);
-    //     }
-    // }
 }

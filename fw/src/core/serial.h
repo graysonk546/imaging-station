@@ -37,11 +37,12 @@ typedef struct {
 
 typedef struct {
     message_t message;
-    HardwareSerial connection;
+    HardwareSerial* connection;
 } serial_conn_t;
 
 typedef enum {
-    RPI
+    RPI,
+    COMPUTER
 } serial_id_t;
 
 /*******************************************************************************

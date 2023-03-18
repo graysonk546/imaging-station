@@ -8,7 +8,7 @@ if __name__== "__main__":
     s = serial.Serial("/dev/ttyUSB0", 115200)
     print(s.isOpen())
     sleep(5)
-    print(s.write(b"start"))
+    print(s.write(b"start\n"))
     s.flush()
     while True:
         # wait on serial communication
@@ -19,6 +19,6 @@ if __name__== "__main__":
             print("take picture")
             # send a response
             sleep(5)
-            s.write(b"finished")
+            s.write(b"finished\n")
             sleep(5)
             s.flush()
