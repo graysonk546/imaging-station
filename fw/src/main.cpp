@@ -1,4 +1,35 @@
-#include <Arduino.h>
+// #include <Arduino.h>
+// #include <Servo.h>
+
+// static Servo servo;
+// static int pos;
+
+
+// void setup() {
+//   servo.attach(PB1);
+//   pinMode(LED_BUILTIN, OUTPUT);
+//   pos = 11;
+// }
+
+// void loop() {
+//   for (int i = 0; i < 78; i++)
+//   {
+//     pos = pos + 2;
+//     servo.write(pos);
+//     delay(50);
+//   }
+
+//   delay(10000);
+
+//   for (int i = 0; i < 78; i++)
+//   {
+//     pos = pos - 2;
+//     servo.write(pos);
+//     delay(100);
+//   }  
+
+//   delay(10000);
+// }
 
 #include "core/serial.h"
 #include "core/stepper.h"
@@ -18,6 +49,15 @@ void setup()
     pinMode(PA7, OUTPUT);
     digitalWrite(PA7, LOW);
 }
+
+// void loop()
+// {
+//     servo_rotateTo(ARM,5);
+//     delay(5000);
+//     servo_rotateTo(ARM, 156);
+//     delay(5000);
+// }
+
 
 typedef enum
 {
@@ -47,14 +87,15 @@ void loop()
         case ROT_PLANE:
             serial_send(COMPUTER, "rotating plane");
             // rotate plane update plane position
-            if (stepper_getAngle(PLANE) > 360)
+            if (stepper_getAngle(PLANE) >= 360)
             {
                 state = WAIT_ON_RPI;
+                stepper_reset(PLANE);
+                servo_rotateTo(ARM, 5);
             }
             else
             {
                 stepper_rotate(PLANE, 360);
-                servo_rotateTo(ARM, 11);
                 state = TAKE_PIC;
             }
             break;
@@ -71,11 +112,11 @@ void loop()
                     if (strcmp("finished", serial_getMessage(RPI)) == 0)
                     {
                         // state determination
-                        if (servo_getAngle(ARM) == 11)
+                        if (servo_getAngle(ARM) == 5)
                         {
                             state = ROT_ARM;
                         }
-                        else if (stepper_getAngle(PLANE) < 360)
+                        else if (stepper_getAngle(PLANE) <= 360)
                         {
                             state = ROT_PLANE;
                         }

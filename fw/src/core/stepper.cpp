@@ -30,3 +30,9 @@ void stepper_setSpeed(stepper_id_t stepperId, uint16_t rpm)
 {
     stepper_arr[stepperId].stepper.setSpeed(rpm);
 }
+
+
+void stepper_reset(stepper_id_t stepperId)
+{
+    stepper_arr[stepperId].angle = 0;
+}

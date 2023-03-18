@@ -6,7 +6,7 @@ static servo_periph_t servo_arr[] =
 {
     {
         .servo = Servo(),
-        .angle = 11
+        .angle = 5
     }
 };
 
