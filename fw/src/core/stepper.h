@@ -1,8 +1,6 @@
 
-
 #include <Arduino.h>
 #include <Stepper.h>
-
 
 typedef enum {
     PLANE,

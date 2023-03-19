@@ -2,7 +2,6 @@
 #include <Arduino.h>
 #include <Servo.h>
 
-
 typedef struct {
     Servo servo;
     uint8_t angle;

@@ -1,5 +1,4 @@
 
-
 #include "servo.h"
 
 static servo_periph_t servo_arr[] = 

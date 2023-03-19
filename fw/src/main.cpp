@@ -1,35 +1,3 @@
-// #include <Arduino.h>
-// #include <Servo.h>
-
-// static Servo servo;
-// static int pos;
-
-
-// void setup() {
-//   servo.attach(PB1);
-//   pinMode(LED_BUILTIN, OUTPUT);
-//   pos = 11;
-// }
-
-// void loop() {
-//   for (int i = 0; i < 78; i++)
-//   {
-//     pos = pos + 2;
-//     servo.write(pos);
-//     delay(50);
-//   }
-
-//   delay(10000);
-
-//   for (int i = 0; i < 78; i++)
-//   {
-//     pos = pos - 2;
-//     servo.write(pos);
-//     delay(100);
-//   }  
-
-//   delay(10000);
-// }
 
 #include "core/serial.h"
 #include "core/stepper.h"
@@ -50,22 +18,13 @@ void setup()
     digitalWrite(PA7, LOW);
 }
 
-// void loop()
-// {
-//     servo_rotateTo(ARM,5);
-//     delay(5000);
-//     servo_rotateTo(ARM, 156);
-//     delay(5000);
-// }
-
-
 typedef enum
 {
     ROT_ARM,
     ROT_PLANE,
     WAIT_ON_PIC,
     TAKE_PIC,
-    WAIT_ON_RPI
+    WAIT_ON_RPI,
 } state_t;
 
 static state_t state = WAIT_ON_RPI;
@@ -92,6 +51,8 @@ void loop()
                 state = WAIT_ON_RPI;
                 stepper_reset(PLANE);
                 servo_rotateTo(ARM, 5);
+                // message indicating end of imaging session
+                serial_send(RPI, "finished-imaging");
             }
             else
             {
@@ -147,6 +108,10 @@ void loop()
                     // if so, change the state to take pic
                     if (strcmp("start", serial_getMessage(RPI)) == 0)
                     {
+                        // TODO: getMessage method exposes memory internal to 
+                        //       serial module, change this to return a copy 
+                        //       of the message or perhaps an enum indicator
+                        //       that is taken to represent the message.
                         serial_send(COMPUTER, "starting control loop");
                         state = TAKE_PIC;
                     }
