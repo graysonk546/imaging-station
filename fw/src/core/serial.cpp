@@ -33,6 +33,10 @@
 //     .index = 0
 // };
 
+
+
+HardwareSerial Serial2(USART2);
+
 static serial_conn_t serial_arr[] = 
 {
     {
@@ -40,7 +44,14 @@ static serial_conn_t serial_arr[] =
         {
             .index = 0
         },
-        .connection = new HardwareSerial(USART2)
+        .connection = &Serial2
+    },
+    {
+        .message =
+        {
+            .index = 0
+        },
+        .connection = &Serial1
     }
 };
 
@@ -61,41 +72,44 @@ static serial_conn_t serial_arr[] =
 void serial_init(serial_id_t serialId)
 {
     // Begin the serial connection
-    serial_arr[serialId].connection.begin(BAUD_RATE);
+    // Serial1.begin(BAUD_RATE);
 
+    serial_arr[serialId].connection->begin(BAUD_RATE);
+
+    // serial_arr[serialId].connection.println("here");
     // Serial2.begin(BAUD_RATE);
 }
 
 bool serial_available(serial_id_t serialId)
 {
-    return serial_arr[serialId].connection.available() > 0;
+    return serial_arr[serialId].connection->available() > 0;
 }
 
 char serial_read(serial_id_t serialId)
 {
-    return serial_arr[serialId].connection.read();
+    return serial_arr[serialId].connection->read();
 }
 
 void serial_send(serial_id_t serialId, char* bytes)
 {
-    serial_arr[serialId].connection.println(bytes);
+    serial_arr[serialId].connection->println(bytes);
     // Serial2.println(bytes);
 }
 
 bool serial_handleByte(serial_id_t serialId, char byte)
 {   
-    serial_conn_t s = serial_arr[serialId];
+    serial_conn_t* s = &serial_arr[serialId];
 
     if (byte == CMD_EOL)
     {
-        s.message.line[s.message.index] = STRING_EOL;
-        s.message.index = 0;
+        s->message.line[s->message.index] = STRING_EOL;
+        s->message.index = 0;
         // we have reached the end of the message
         return true;
     }
     else
     {
-        s.message.line[s.message.index++] = byte;
+        s->message.line[s->message.index++] = byte;
         // we have not yet reached the end of the message
         return false;
     }
@@ -103,12 +117,18 @@ bool serial_handleByte(serial_id_t serialId, char byte)
 
 void serial_echo(serial_id_t serialId)
 {
-    serial_conn_t s = serial_arr[serialId];
+    serial_conn_t* s = &serial_arr[serialId];
+
     uint8_t i = 0;
-    while (s.message.line[i] != STRING_EOL)
+    while (s->message.line[i] != STRING_EOL)
     {
-        s.connection.print(s.message.line[i]);
+        s->connection->print(s->message.line[i]);
         i++;
     }
-    s.connection.print(CMD_EOL);
+    s->connection->print(CMD_EOL);
+}
+
+char* serial_getMessage(serial_id_t serialId)
+{
+    return serial_arr[serialId].message.line;
 }

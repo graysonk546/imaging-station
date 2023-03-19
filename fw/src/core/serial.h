@@ -37,11 +37,12 @@ typedef struct {
 
 typedef struct {
     message_t message;
-    HardwareSerial connection;
+    HardwareSerial* connection;
 } serial_conn_t;
 
 typedef enum {
-    RPI
+    RPI,
+    COMPUTER
 } serial_id_t;
 
 /*******************************************************************************
@@ -63,5 +64,7 @@ void serial_send(serial_id_t serialId, char* bytes);
 bool serial_handleByte(serial_id_t serialId, char byte);
 
 void serial_echo(serial_id_t serialId);
+
+char* serial_getMessage(serial_id_t serialId);
 
 #endif
