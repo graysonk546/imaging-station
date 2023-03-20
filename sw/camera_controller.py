@@ -10,13 +10,14 @@ import time
 from datetime import datetime
 
 FOLDER_NAME = "imaging_test_{date}"
-FILE_NAME =   FOLDER_NAME + "/pic_{n}"
+FILE_NAME =   "/pic_{n}.tiff"
 
 def setup_camera(self, cam: Camera):
     with cam:
         # Enable auto exposure time setting if camera supports it
         try:
-            cam.ExposureAuto.set('Continuous')
+            # cam.ExposureAuto.set('Continuous')
+            cam.ExposureTime.set(8999999)
 
             # Uncomment these commands to set a custom exposure, its range is around 10 to 1e7 us
             # Can run script sw/python-test-scripts/Examples_from_Vimba/list_features.py
@@ -72,23 +73,25 @@ if __name__== "__main__":
     s.flush()
     # make a directory for the sample images
     date = datetime.now().strftime("%d_%m_%Y|%H_%M_%S")
-    os.mkdir(FOLDER_NAME.format(date=date))
+    f = FOLDER_NAME.format(date=date)
+    os.mkdir(f)
     n = 0
 
     while True:
         # wait on serial communication
         if s.in_waiting > 0:
             sleep(1)
-            if s.readline().decode("ascii") == "picture":
+            if s.readline().decode("ascii") == "picture\r\n":
+                print("here")
                 with Vimba.get_instance () as vimba:
                     cams = vimba.get_all_cameras ()
                     # Have to write this "with statement" before trying to use a vimba camera
                     with cams [0] as cam:
-                        frame = cam.get_frame()
+                        frame = cam.get_frame(timeout_ms=1000000)
                         print("Got a frame")
                         time.sleep(1)
                         frame.convert_pixel_format(PixelFormat.Mono8)
-                        cv2.imwrite(FILE_NAME.format(n=n), frame.as_opencv_image ())
+                        cv2.imwrite(f+FILE_NAME.format(n=n), frame.as_opencv_image ())
                         n+=1
                         # indicate that a picture was taken
                         print("take picture")
