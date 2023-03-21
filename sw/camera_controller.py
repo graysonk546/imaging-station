@@ -12,13 +12,13 @@ from datetime import datetime
 FOLDER_NAME = "imaging_test_{date}"
 FILE_NAME =   "/pic_{n}.tiff"
 
-def setup_camera(self, cam: Camera):
+def setup_camera(cam: Camera):
     with cam:
         # set the camera exposure
         try:
-            cam.ExposureTime.set(8999999)
+            cam.ExposureAuto.set('Continuous')
         except (AttributeError, VimbaFeatureError):
-            pass
+            print("did not set exposure")
         # set the camera white balance
         try:
             cam.BalanceWhiteAuto.set('Continuous')
@@ -62,20 +62,27 @@ if __name__== "__main__":
     os.mkdir(f)
     n = 0
 
+    # Retrieve our camera once, set exposure/white balance
+    with Vimba.get_instance () as vimba:
+        cams = vimba.get_all_cameras ()
+        with cams [0] as cam:
+            setup_camera(cam)
+            imaging_camera = cam
+
+
     while True:
         # wait on serial communication
         if s.in_waiting > 0:
-            # sleep(1)
+            time.sleep(1)
             message = s.readline().decode("ascii")
             if message == "picture\r\n":
                 # requirement that Vimba instance is opened using "with"
                 with Vimba.get_instance () as vimba:
-                    cams = vimba.get_all_cameras ()
-                    with cams [0] as cam:
+                    with imaging_camera as cam:
                         # set frame capture timeout at max exposure time
                         frame = cam.get_frame(timeout_ms=1000000)
                         print("Got a frame")
-                        # time.sleep(1)
+                        time.sleep(1)
                         print("Frame saved to mem")
                         frame.convert_pixel_format(PixelFormat.Mono8)
                         cv2.imwrite(f+FILE_NAME.format(n=n), \
