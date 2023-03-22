@@ -10,7 +10,8 @@ import time
 from datetime import datetime
 
 FOLDER_NAME = "imaging_test_{date}"
-FILE_NAME =   "/pic_{n}.tiff"
+FILE_NAME = "/pic_{n}.tiff"
+
 
 def setup_camera(cam: Camera):
     with cam:
@@ -34,7 +35,7 @@ def setup_camera(cam: Camera):
 
         # Query available, open_cv compatible pixel formats
         # prefer color formats over monochrome formats
-        cv_fmts = intersect_pixel_formats(cam.get_pixel_formats(), \
+        cv_fmts = intersect_pixel_formats(cam.get_pixel_formats(),
                                           OPENCV_PIXEL_FORMATS)
         color_fmts = intersect_pixel_formats(cv_fmts, COLOR_PIXEL_FORMATS)
 
@@ -47,10 +48,11 @@ def setup_camera(cam: Camera):
             else:
                 abort('Camera does not support a OpenCV compatible format')
 
-if __name__== "__main__":
+
+def begin_imaging_process(imaging_camera: Camera):
     # establish serial communication with Bluepill
     s = serial.Serial("/dev/ttyUSB0", 115200)
-    
+
     # commence the imaging session with the "start" command
     sleep(1)
     print(s.write(b"start\n"))
@@ -62,14 +64,6 @@ if __name__== "__main__":
     os.mkdir(f)
     n = 0
 
-    # Retrieve our camera once, set exposure/white balance
-    with Vimba.get_instance () as vimba:
-        cams = vimba.get_all_cameras ()
-        with cams [0] as cam:
-            setup_camera(cam)
-            imaging_camera = cam
-
-
     while True:
         # wait on serial communication
         if s.in_waiting > 0:
@@ -77,7 +71,7 @@ if __name__== "__main__":
             message = s.readline().decode("ascii")
             if message == "picture\r\n":
                 # requirement that Vimba instance is opened using "with"
-                with Vimba.get_instance () as vimba:
+                with Vimba.get_instance() as vimba:
                     with imaging_camera as cam:
                         # set frame capture timeout at max exposure time
                         frame = cam.get_frame(timeout_ms=1000000)
@@ -85,13 +79,24 @@ if __name__== "__main__":
                         time.sleep(1)
                         print("Frame saved to mem")
                         frame.convert_pixel_format(PixelFormat.Mono8)
-                        cv2.imwrite(f+FILE_NAME.format(n=n), \
+                        cv2.imwrite(f+FILE_NAME.format(n=n),
                                     frame.as_opencv_image())
-                        n+=1
+                        n += 1
                         # send a message to indicate a picture was saved
                         s.write(b"finished\n")
                         s.flush()
-                        
+
             elif message == "finished-imaging\r\n":
                 # exit the control loop
                 break
+
+
+if __name__ == "__main__":
+    # Retrieve our camera once, set exposure/white balance
+    with Vimba.get_instance() as vimba:
+        cams = vimba.get_all_cameras()
+        input_camera = cams[0]
+        with input_camera as cam:
+            setup_camera(cam)
+
+    begin_imaging_process(input_camera)
