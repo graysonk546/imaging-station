@@ -15,7 +15,63 @@ from datetime import datetime
 
 FOLDER_NAME = "imaging_test_{date}"
 FILE_NAME = "/pic_{n}.tiff"
+CAMERA = None
 
+class Worker(QtCore.QObject):
+    finished = QtCore.pyqtSignal()
+    progress = QtCore.pyqtSignal(Frame)
+
+    def run(self):
+        # establish serial communication with Bluepill
+        s = serial.Serial("/dev/ttyUSB0", 115200)
+
+        # commence the imaging session with the "start" command
+        time.sleep(1)
+        print(s.write(b"start\n"))
+        s.flush()
+
+        # make a directory to temporarily store the images
+        date = datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
+        f = FOLDER_NAME.format(date=date)
+        os.mkdir(f)
+        n = 0
+        print("Starting Loop")
+        while True:
+            # wait on serial communication
+            if s.in_waiting > 0 or True:
+                time.sleep(1)
+                # message = "picture\r\n"
+                message = s.readline().decode("ascii")
+                if message == "picture\r\n":
+                    print("Obtaining Frame")
+                    # requirement that Vimba instance is opened using "with"
+                    with Vimba.get_instance() as vimba:
+                        with CAMERA as cam:
+                            # set frame capture timeout at max exposure time
+                            try:
+                                frame = cam.get_frame(timeout_ms=1000000)
+                            except VimbaTimeout as e:
+                                print("Frame acquisition timed out: " + str(e))
+                                continue
+                            print("Got a frame")
+                            time.sleep(1)
+                            print("Frame saved to mem")
+                            
+                            # Draw directly
+                            print("Drawing")
+                            self.progress.emit(frame)
+                            print("Done Drawing")
+                            frame.convert_pixel_format(PixelFormat.Mono8)
+                            cv2.imwrite(f+FILE_NAME.format(n=n),
+                                        frame.as_opencv_image())
+                            n += 1
+                            # send a message to indicate a picture was saved
+                            s.write(b"finished\n")
+                            s.flush()
+
+                elif message == "finished-imaging\r\n":
+                    # exit the control loop
+                    break
 
 class My_App(QtWidgets.QMainWindow):
 
@@ -29,11 +85,26 @@ class My_App(QtWidgets.QMainWindow):
             if not cams:
                 abort('No Cameras accessible. Abort.')
             self.cam = cams[0]
+            global CAMERA
+            CAMERA = self.cam
             with self.cam as cam:
                 self.setup_camera(cam)
 
-        self.start_imaging_button.connect(
-            lambda: self.begin_imaging_process(cam))
+        self.start_imaging_button.clicked.connect(
+            self.start_imaging_thread)
+        
+    def start_imaging_thread(self):
+        self.camera_thread = QtCore.QThread()
+        self.worker = Worker()
+        self.worker.moveToThread(self.camera_thread)
+        # Connect signals/slots
+        self.camera_thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self.camera_thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.camera_thread.finished.connect(self.camera_thread.deleteLater)
+        self.worker.progress.connect(self.draw_image_on_gui)
+
+        self.camera_thread.start()
 
     def setup_camera(self, cam: Camera):
         with cam:
@@ -79,53 +150,7 @@ class My_App(QtWidgets.QMainWindow):
 
                 else:
                     abort(
-                        'Camera does not support a OpenCV compatible format natively. Abort.')
-
-    def begin_imaging_process(self, input_camera: Camera):
-        # establish serial communication with Bluepill
-        s = serial.Serial("/dev/ttyUSB0", 115200)
-
-        # commence the imaging session with the "start" command
-        time.sleep(1)
-        print(s.write(b"start\n"))
-        s.flush()
-
-        # make a directory to temporarily store the images
-        date = datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
-        f = FOLDER_NAME.format(date=date)
-        os.mkdir(f)
-        n = 0
-
-        while True:
-            # wait on serial communication
-            if s.in_waiting > 0:
-                time.sleep(1)
-                message = s.readline().decode("ascii")
-                if message == "picture\r\n":
-                    # requirement that Vimba instance is opened using "with"
-                    with Vimba.get_instance() as vimba:
-                        with input_camera as cam:
-                            # set frame capture timeout at max exposure time
-                            try:
-                                frame = cam.get_frame(timeout_ms=1000000)
-                            except VimbaTimeout as e:
-                                print("Frame acquisition timed out: " + str(e))
-                                continue
-                            print("Got a frame")
-                            time.sleep(1)
-                            print("Frame saved to mem")
-                            frame.convert_pixel_format(PixelFormat.Mono8)
-                            self.draw_image_on_gui(frame)
-                            cv2.imwrite(f+FILE_NAME.format(n=n),
-                                        frame.as_opencv_image())
-                            n += 1
-                            # send a message to indicate a picture was saved
-                            s.write(b"finished\n")
-                            s.flush()
-
-                elif message == "finished-imaging\r\n":
-                    # exit the control loop
-                    break
+                        'Camera does not support a OpenCV compatible format natively. Abort.')        
 
     def draw_image_on_gui(self, frame: Frame):
         resized_photo = self.shrink(frame.as_opencv_image())
@@ -141,8 +166,8 @@ class My_App(QtWidgets.QMainWindow):
         return QtGui.QPixmap.fromImage(q_img)
 
     def shrink(self, cv_img):
-        width = int(cv_img.shape[1] * 0.25)
-        height = int(cv_img.shape[0] * 0.25)
+        width = int(cv_img.shape[1] * 5 / 100)
+        height = int(cv_img.shape[0] * 5 / 100)
 
         resized = cv2.resize(cv_img, (width, height),
                              interpolation=cv2.INTER_AREA)

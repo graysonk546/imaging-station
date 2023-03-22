@@ -14,7 +14,7 @@
    <string>Data Collection GUI</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QPushButton" name="take_photo">
+   <widget class="QPushButton" name="start_imaging_button">
     <property name="geometry">
      <rect>
       <x>60</x>
