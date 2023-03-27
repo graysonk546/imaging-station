@@ -12,14 +12,18 @@ import serial
 from vimba import *
 import os
 from datetime import datetime
+from collections import OrderedDict
 
-FOLDER_NAME = "imaging_test_{date}"
-FILE_NAME = "/pic_{n}.tiff"
+FOLDER_NAME = "images/imaging_test_{date}"
 CAMERA = None
 
 class CameraWorker(QtCore.QObject):
     finished = QtCore.pyqtSignal()
     progress = QtCore.pyqtSignal(Frame)
+
+    def __init__(self, filename):
+        super(CameraWorker, self).__init__()
+        self.filename = filename
 
     def run(self):
         # establish serial communication with Bluepill
@@ -33,6 +37,8 @@ class CameraWorker(QtCore.QObject):
         # make a directory to temporarily store the images
         date = datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
         f = FOLDER_NAME.format(date=date)
+        if not os.path.exists("images"):
+            os.mkdir("images")
         os.mkdir(f)
         n = 0
         print("Starting Loop")
@@ -62,6 +68,8 @@ class CameraWorker(QtCore.QObject):
                             print("Drawing")
                             self.progress.emit(frame)
                             print("Done Drawing")
+                            final_filename = os.path.join(f, self.filename + str(n) + ".tiff")
+                            print(final_filename)
                             frame.convert_pixel_format(PixelFormat.Mono8)
                             # cv2.imwrite(f+FILE_NAME.format(n=n),
                             #             frame.as_opencv_image())
@@ -92,22 +100,71 @@ class My_App(QtWidgets.QMainWindow):
             with self.cam as cam:
                 self.setup_camera(cam)
 
+        self.filename_variables = OrderedDict()
+
+        self.filename_variables['type'] = None
+        self.filename_variables['diameter'] = None
+        self.filename_variables['length'] = None
+        self.filename_variables['head'] = None
+
         self.start_imaging_button.clicked.connect(
             self.start_imaging_thread)
-        self.FastenerTypeGroup.buttonClicked.connect(lambda x: print(x.text()))
-        
+
+        # Assign buttons for labeling
+        self.FastenerTypeGroup.buttonClicked.connect(self.assign_fastener_type)
+        self.FastenerTypeGroup.buttonClicked.connect(self.update_fastener_filename)
+        self.MetricSizeGroup.buttonClicked.connect(self.assign_fastener_diameter)
+        self.MetricSizeGroup.buttonClicked.connect(self.update_fastener_filename)
+        self.MetricLengthGroup.buttonClicked.connect(self.assign_fastener_length)
+        self.MetricLengthGroup.buttonClicked.connect(self.update_fastener_filename)
+        self.HeadTypeGroup.buttonClicked.connect(self.assign_fastener_head)
+        self.HeadTypeGroup.buttonClicked.connect(self.update_fastener_filename)
+
+    def assign_fastener_type(self, pressed_button):
+        self.filename_variables['type'] = pressed_button.text()
+
+    def assign_fastener_diameter(self, pressed_button):
+        self.filename_variables['diameter'] = pressed_button.text()
+
+    def assign_fastener_length(self, pressed_button):
+        self.filename_variables['length'] = pressed_button.text()
+
+    def assign_fastener_head(self, pressed_button):
+        self.filename_variables['head'] = pressed_button.text()
+
+    def update_fastener_filename(self):
+        current_name = ""
+        for key, val in self.filename_variables.items():
+            if type(val) is str:
+                current_name += val + "_"
+        self.fastener_filename.setText(current_name)
+    
     def start_imaging_thread(self):
         self.camera_thread = QtCore.QThread()
-        self.worker = CameraWorker()
+        self.worker = CameraWorker(self.fastener_filename.text())
         self.worker.moveToThread(self.camera_thread)
         # Connect signals/slots
         self.camera_thread.started.connect(self.worker.run)
+        self.camera_thread.started.connect(self.change_tab)
         self.worker.finished.connect(self.camera_thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
         self.camera_thread.finished.connect(self.camera_thread.deleteLater)
+        self.camera_thread.finished.connect(self.clean_up_between_runs)
         self.worker.progress.connect(self.draw_image_on_gui)
 
         self.camera_thread.start()
+
+    def change_tab(self):
+        # This isn't working..
+        self.tabWidget.setCurrentIndex(1)
+
+    def clean_up_between_runs(self):
+        # Reset variables for the next thread imaging suite
+        for key in self.filename_variables:
+            self.filename_variables[key] = None
+        self.fastener_filename.setText("")
+        # Unclick all buttons? No need?
+        return
 
     def setup_camera(self, cam: Camera):
         with cam:

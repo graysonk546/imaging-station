@@ -733,27 +733,39 @@
      <widget class="QLabel" name="label">
       <property name="geometry">
        <rect>
-        <x>240</x>
-        <y>520</y>
+        <x>110</x>
+        <y>530</y>
         <width>421</width>
         <height>22</height>
        </rect>
       </property>
+      <property name="font">
+       <font>
+        <pointsize>16</pointsize>
+       </font>
+      </property>
       <property name="text">
-       <string>Resulting Filename is:</string>
+       <string>Resulting Base Filename is:</string>
       </property>
      </widget>
-     <widget class="QLabel" name="label_2">
+     <widget class="QLabel" name="fastener_filename">
       <property name="geometry">
        <rect>
         <x>250</x>
         <y>570</y>
-        <width>391</width>
-        <height>22</height>
+        <width>541</width>
+        <height>51</height>
        </rect>
       </property>
+      <property name="font">
+       <font>
+        <pointsize>24</pointsize>
+        <weight>75</weight>
+        <bold>true</bold>
+       </font>
+      </property>
       <property name="text">
-       <string>TextLabel</string>
+       <string>Uninitialized</string>
       </property>
      </widget>
     </widget>
@@ -849,9 +861,25 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="MetricSizeGroup"/>
-  <buttongroup name="FastenerTypeGroup"/>
-  <buttongroup name="MetricLengthGroup"/>
-  <buttongroup name="HeadTypeGroup"/>
+  <buttongroup name="MetricSizeGroup">
+   <property name="exclusive">
+    <bool>false</bool>
+   </property>
+  </buttongroup>
+  <buttongroup name="FastenerTypeGroup">
+   <property name="exclusive">
+    <bool>false</bool>
+   </property>
+  </buttongroup>
+  <buttongroup name="MetricLengthGroup">
+   <property name="exclusive">
+    <bool>false</bool>
+   </property>
+  </buttongroup>
+  <buttongroup name="HeadTypeGroup">
+   <property name="exclusive">
+    <bool>false</bool>
+   </property>
+  </buttongroup>
  </buttongroups>
 </ui>
