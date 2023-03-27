@@ -17,7 +17,7 @@ FOLDER_NAME = "imaging_test_{date}"
 FILE_NAME = "/pic_{n}.tiff"
 CAMERA = None
 
-class Worker(QtCore.QObject):
+class CameraWorker(QtCore.QObject):
     finished = QtCore.pyqtSignal()
     progress = QtCore.pyqtSignal(Frame)
 
@@ -38,10 +38,11 @@ class Worker(QtCore.QObject):
         print("Starting Loop")
         while True:
             # wait on serial communication
-            if s.in_waiting > 0 or True:
+            if True:
+            # if s.in_waiting > 0 or True:
                 time.sleep(1)
-                # message = "picture\r\n"
-                message = s.readline().decode("ascii")
+                message = "picture\r\n"
+                # message = s.readline().decode("ascii")
                 if message == "picture\r\n":
                     print("Obtaining Frame")
                     # requirement that Vimba instance is opened using "with"
@@ -62,8 +63,8 @@ class Worker(QtCore.QObject):
                             self.progress.emit(frame)
                             print("Done Drawing")
                             frame.convert_pixel_format(PixelFormat.Mono8)
-                            cv2.imwrite(f+FILE_NAME.format(n=n),
-                                        frame.as_opencv_image())
+                            # cv2.imwrite(f+FILE_NAME.format(n=n),
+                            #             frame.as_opencv_image())
                             n += 1
                             # send a message to indicate a picture was saved
                             s.write(b"finished\n")
@@ -72,6 +73,7 @@ class Worker(QtCore.QObject):
                 elif message == "finished-imaging\r\n":
                     # exit the control loop
                     break
+        self.finished.emit()
 
 class My_App(QtWidgets.QMainWindow):
 
@@ -92,10 +94,11 @@ class My_App(QtWidgets.QMainWindow):
 
         self.start_imaging_button.clicked.connect(
             self.start_imaging_thread)
+        self.FastenerTypeGroup.buttonClicked.connect(lambda x: print(x.text()))
         
     def start_imaging_thread(self):
         self.camera_thread = QtCore.QThread()
-        self.worker = Worker()
+        self.worker = CameraWorker()
         self.worker.moveToThread(self.camera_thread)
         # Connect signals/slots
         self.camera_thread.started.connect(self.worker.run)
@@ -166,8 +169,8 @@ class My_App(QtWidgets.QMainWindow):
         return QtGui.QPixmap.fromImage(q_img)
 
     def shrink(self, cv_img):
-        width = int(cv_img.shape[1] * 5 / 100)
-        height = int(cv_img.shape[0] * 5 / 100)
+        width = int(cv_img.shape[1] * 20 / 100)
+        height = int(cv_img.shape[0] * 20 / 100)
 
         resized = cv2.resize(cv_img, (width, height),
                              interpolation=cv2.INTER_AREA)
