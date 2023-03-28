@@ -13,11 +13,15 @@ from vimba import *
 import os
 from datetime import datetime
 from collections import OrderedDict
+from rclone_python import rclone
 
 FOLDER_NAME = "images/imaging_test_{date}"
+REMOTE_IMAGE_FOLDER = "gdrive:2306\ Screw\ Sorter/Data/real_image_sets/"
+
 CAMERA = None
 
 class CameraWorker(QtCore.QObject):
+    upload = QtCore.pyqtSignal(str)
     finished = QtCore.pyqtSignal()
     progress = QtCore.pyqtSignal(Frame)
 
@@ -44,8 +48,7 @@ class CameraWorker(QtCore.QObject):
         print("Starting Loop")
         while True:
             # wait on serial communication
-            if True:
-            # if s.in_waiting > 0 or True:
+            if s.in_waiting > 0 or True:
                 time.sleep(1)
                 message = "picture\r\n"
                 # message = s.readline().decode("ascii")
@@ -71,16 +74,20 @@ class CameraWorker(QtCore.QObject):
                             final_filename = os.path.join(f, self.filename + str(n) + ".tiff")
                             print(final_filename)
                             frame.convert_pixel_format(PixelFormat.Mono8)
-                            # cv2.imwrite(f+FILE_NAME.format(n=n),
-                            #             frame.as_opencv_image())
+                            cv2.imwrite(final_filename,
+                                        frame.as_opencv_image())
                             n += 1
                             # send a message to indicate a picture was saved
                             s.write(b"finished\n")
                             s.flush()
+                    
+                    if n == 2:
+                        break
 
                 elif message == "finished-imaging\r\n":
                     # exit the control loop
                     break
+        self.upload.emit(f)
         self.finished.emit()
 
 class My_App(QtWidgets.QMainWindow):
@@ -145,18 +152,24 @@ class My_App(QtWidgets.QMainWindow):
         self.worker.moveToThread(self.camera_thread)
         # Connect signals/slots
         self.camera_thread.started.connect(self.worker.run)
-        self.camera_thread.started.connect(self.change_tab)
+        self.worker.progress.connect(self.draw_image_on_gui)
+        self.worker.upload.connect(self.upload_to_gdrive)
         self.worker.finished.connect(self.camera_thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
         self.camera_thread.finished.connect(self.camera_thread.deleteLater)
         self.camera_thread.finished.connect(self.clean_up_between_runs)
-        self.worker.progress.connect(self.draw_image_on_gui)
-
         self.camera_thread.start()
 
-    def change_tab(self):
-        # This isn't working..
+        # switch to camera tab
         self.tabWidget.setCurrentIndex(1)
+
+    def upload_to_gdrive(self, image_directory):
+        # Split input so the gdrive only has the imaging_test_../ folder,
+        # and we don't upload the images/ parent folder too
+        lowest_level_folder = os.path.split(image_directory)[-1]
+        upload_path = os.path.join(REMOTE_IMAGE_FOLDER, lowest_level_folder)
+        print(f"Uploading to Drive. Path: {upload_path}")
+        rclone.copy(image_directory, upload_path)
 
     def clean_up_between_runs(self):
         # Reset variables for the next thread imaging suite
