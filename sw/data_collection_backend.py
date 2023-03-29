@@ -12,14 +12,22 @@ import serial
 from vimba import *
 import os
 from datetime import datetime
+from collections import OrderedDict
+from rclone_python import rclone
 
-FOLDER_NAME = "imaging_test_{date}"
-FILE_NAME = "/pic_{n}.tiff"
+FOLDER_NAME = "images/imaging_test_{date}"
+REMOTE_IMAGE_FOLDER = "gdrive:2306\ Screw\ Sorter/Data/real_image_sets/"
+
 CAMERA = None
 
-class Worker(QtCore.QObject):
+class CameraWorker(QtCore.QObject):
+    upload = QtCore.pyqtSignal(str)
     finished = QtCore.pyqtSignal()
     progress = QtCore.pyqtSignal(Frame)
+
+    def __init__(self, filename):
+        super(CameraWorker, self).__init__()
+        self.filename = filename
 
     def run(self):
         # establish serial communication with Bluepill
@@ -33,6 +41,8 @@ class Worker(QtCore.QObject):
         # make a directory to temporarily store the images
         date = datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
         f = FOLDER_NAME.format(date=date)
+        if not os.path.exists("images"):
+            os.mkdir("images")
         os.mkdir(f)
         n = 0
         print("Starting Loop")
@@ -40,8 +50,8 @@ class Worker(QtCore.QObject):
             # wait on serial communication
             if s.in_waiting > 0 or True:
                 time.sleep(1)
-                # message = "picture\r\n"
-                message = s.readline().decode("ascii")
+                message = "picture\r\n"
+                # message = s.readline().decode("ascii")
                 if message == "picture\r\n":
                     print("Obtaining Frame")
                     # requirement that Vimba instance is opened using "with"
@@ -61,17 +71,24 @@ class Worker(QtCore.QObject):
                             print("Drawing")
                             self.progress.emit(frame)
                             print("Done Drawing")
+                            final_filename = os.path.join(f, self.filename + str(n) + ".tiff")
+                            print(final_filename)
                             frame.convert_pixel_format(PixelFormat.Mono8)
-                            cv2.imwrite(f+FILE_NAME.format(n=n),
+                            cv2.imwrite(final_filename,
                                         frame.as_opencv_image())
                             n += 1
                             # send a message to indicate a picture was saved
                             s.write(b"finished\n")
                             s.flush()
+                    
+                    if n == 2:
+                        break
 
                 elif message == "finished-imaging\r\n":
                     # exit the control loop
                     break
+        self.upload.emit(f)
+        self.finished.emit()
 
 class My_App(QtWidgets.QMainWindow):
 
@@ -90,21 +107,77 @@ class My_App(QtWidgets.QMainWindow):
             with self.cam as cam:
                 self.setup_camera(cam)
 
+        self.filename_variables = OrderedDict()
+
+        self.filename_variables['type'] = None
+        self.filename_variables['diameter'] = None
+        self.filename_variables['length'] = None
+        self.filename_variables['head'] = None
+
         self.start_imaging_button.clicked.connect(
             self.start_imaging_thread)
-        
+
+        # Assign buttons for labeling
+        self.FastenerTypeGroup.buttonClicked.connect(self.assign_fastener_type)
+        self.FastenerTypeGroup.buttonClicked.connect(self.update_fastener_filename)
+        self.MetricSizeGroup.buttonClicked.connect(self.assign_fastener_diameter)
+        self.MetricSizeGroup.buttonClicked.connect(self.update_fastener_filename)
+        self.MetricLengthGroup.buttonClicked.connect(self.assign_fastener_length)
+        self.MetricLengthGroup.buttonClicked.connect(self.update_fastener_filename)
+        self.HeadTypeGroup.buttonClicked.connect(self.assign_fastener_head)
+        self.HeadTypeGroup.buttonClicked.connect(self.update_fastener_filename)
+
+    def assign_fastener_type(self, pressed_button):
+        self.filename_variables['type'] = pressed_button.text()
+
+    def assign_fastener_diameter(self, pressed_button):
+        self.filename_variables['diameter'] = pressed_button.text()
+
+    def assign_fastener_length(self, pressed_button):
+        self.filename_variables['length'] = pressed_button.text()
+
+    def assign_fastener_head(self, pressed_button):
+        self.filename_variables['head'] = pressed_button.text()
+
+    def update_fastener_filename(self):
+        current_name = ""
+        for key, val in self.filename_variables.items():
+            if type(val) is str:
+                current_name += val + "_"
+        self.fastener_filename.setText(current_name)
+    
     def start_imaging_thread(self):
         self.camera_thread = QtCore.QThread()
-        self.worker = Worker()
+        self.worker = CameraWorker(self.fastener_filename.text())
         self.worker.moveToThread(self.camera_thread)
         # Connect signals/slots
         self.camera_thread.started.connect(self.worker.run)
+        self.worker.progress.connect(self.draw_image_on_gui)
+        self.worker.upload.connect(self.upload_to_gdrive)
         self.worker.finished.connect(self.camera_thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
         self.camera_thread.finished.connect(self.camera_thread.deleteLater)
-        self.worker.progress.connect(self.draw_image_on_gui)
-
+        self.camera_thread.finished.connect(self.clean_up_between_runs)
         self.camera_thread.start()
+
+        # switch to camera tab
+        self.tabWidget.setCurrentIndex(1)
+
+    def upload_to_gdrive(self, image_directory):
+        # Split input so the gdrive only has the imaging_test_../ folder,
+        # and we don't upload the images/ parent folder too
+        lowest_level_folder = os.path.split(image_directory)[-1]
+        upload_path = os.path.join(REMOTE_IMAGE_FOLDER, lowest_level_folder)
+        print(f"Uploading to Drive. Path: {upload_path}")
+        rclone.copy(image_directory, upload_path)
+
+    def clean_up_between_runs(self):
+        # Reset variables for the next thread imaging suite
+        for key in self.filename_variables:
+            self.filename_variables[key] = None
+        self.fastener_filename.setText("")
+        # Unclick all buttons? No need?
+        return
 
     def setup_camera(self, cam: Camera):
         with cam:
@@ -166,8 +239,8 @@ class My_App(QtWidgets.QMainWindow):
         return QtGui.QPixmap.fromImage(q_img)
 
     def shrink(self, cv_img):
-        width = int(cv_img.shape[1] * 5 / 100)
-        height = int(cv_img.shape[0] * 5 / 100)
+        width = int(cv_img.shape[1] * 20 / 100)
+        height = int(cv_img.shape[0] * 20 / 100)
 
         resized = cv2.resize(cv_img, (width, height),
                              interpolation=cv2.INTER_AREA)
