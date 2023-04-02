@@ -1,14 +1,14 @@
 
 #include "stepper.h"
 
-#define STEPS 200
-#define STEP_ANGLE 1.8
+#define STEPS 400
+#define STEP_ANGLE 0.9
 
 static stepper_t stepper_arr[] = 
 {
     {
         .angle = 0,
-        .stepper = Stepper(STEPS, PA5, PA6)
+        .stepper = Stepper(STEPS, PA5 /*dir*/, PA6 /*step*/)
     }
 };
 
@@ -16,8 +16,8 @@ static stepper_t stepper_arr[] =
 
 void stepper_rotate(stepper_id_t stepperId, uint16_t angle)
 {
-    stepper_arr[stepperId].stepper.step((int16_t) angle / STEP_ANGLE);
-    stepper_arr[stepperId].angle += angle / 6;
+    stepper_arr[stepperId].stepper.step((int16_t) angle * 6 / STEP_ANGLE);
+    stepper_arr[stepperId].angle += angle;
 }
 
 uint16_t stepper_getAngle(stepper_id_t stepperId) 
