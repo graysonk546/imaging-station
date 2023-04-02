@@ -2,22 +2,10 @@
 #include "core/serial.h"
 #include "core/stepper.h"
 #include "core/servo.h"
+#include "core/light.h"
 
 void setup() 
 {
-
-    pinMode(PA0, OUTPUT);
-    pwm_start(PA_0, 2000, 0.05*65536, TimerCompareFormat_t::RESOLUTION_16B_COMPARE_FORMAT);
-
-    // pinMode(PA0, OUTPUT);
-    // digitalWrite(PA0, LOW);
-
-    pinMode(PA1, OUTPUT);
-    pwm_start(PA_1, 2000, 0.80*65536, TimerCompareFormat_t::RESOLUTION_16B_COMPARE_FORMAT);
-
-    // pinMode(PA1, OUTPUT);
-    // digitalWrite(PA1, HIGH);
-
     // make sure system is in a state where it is ready to take pictures here
     serial_init(COMPUTER);
     serial_init(RPI);
@@ -30,6 +18,9 @@ void setup()
     pinMode(PA7, OUTPUT);
     digitalWrite(PA7, LOW);
 
+    // intialize the lights
+    light_init(DOME);
+    light_init(BACK);
 
     // A0 back light (OFF Duty Cycle 0%)
 
@@ -58,13 +49,21 @@ void loop()
     switch (state)
     {
         case ROT_ARM:
+            // turn off the backlight
+            light_update(BACK, BACK_OFF);
+            // debug message
             serial_send(COMPUTER, "rotating arm down");
             // rotate arm update arm position
             servo_rotateTo(ARM, 156); // 156
+            // turn on the dome light
+            light_update(DOME, DOME_ON);
             state = TAKE_PIC;
             break;
 
         case ROT_PLANE:
+            // turn the light off for rotation
+            light_update(DOME, DOME_OFF);
+
             serial_send(COMPUTER, "rotating plane");
             // rotate plane update plane position
             if (stepper_getAngle(PLANE) >= 360*4)
@@ -78,6 +77,8 @@ void loop()
             else
             {
                 stepper_rotate(PLANE, 180);
+                // turn the dome light on for first side-on photo
+                light_update(DOME, DOME_ON);
                 state = TAKE_PIC;
             }
             break;
@@ -134,6 +135,8 @@ void loop()
                         //       of the message or perhaps an enum indicator
                         //       that is taken to represent the message.
                         serial_send(COMPUTER, "starting control loop");
+                        // turn on the back light
+                        light_update(BACK, BACK_ON);
                         state = TAKE_PIC;
                     }
                 }
