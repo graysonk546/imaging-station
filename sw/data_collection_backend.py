@@ -50,8 +50,8 @@ class CameraWorker(QtCore.QObject):
             # wait on serial communication
             if s.in_waiting > 0 or True:
                 time.sleep(1)
-                # message = "picture\r\n"
-                message = s.readline().decode("ascii")
+                message = "picture\r\n"
+                # message = s.readline().decode("ascii")
                 if message == "picture\r\n":
                     print("Obtaining Frame")
                     # requirement that Vimba instance is opened using "with"
@@ -81,8 +81,8 @@ class CameraWorker(QtCore.QObject):
                             s.write(b"finished\n")
                             s.flush()
                     
-                # if n == 2:
-                    # break
+                if n == 2:
+                    break
 
                 elif message == "finished-imaging\r\n":
                     # exit the control loop
@@ -170,6 +170,7 @@ class My_App(QtWidgets.QMainWindow):
         upload_path = os.path.join(REMOTE_IMAGE_FOLDER, lowest_level_folder)
         print(f"Uploading to Drive. Path: {upload_path}")
         rclone.copy(image_directory, upload_path)
+        print(f"Upload complete")
 
     def clean_up_between_runs(self):
         # Reset variables for the next thread imaging suite
