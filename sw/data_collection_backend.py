@@ -17,6 +17,7 @@ from rclone_python import rclone
 
 FOLDER_NAME = "images/imaging_test_{date}"
 REMOTE_IMAGE_FOLDER = "gdrive:2306\ Screw\ Sorter/Data/real_image_sets/"
+CURRENT_STAGED_IMAGE_FOLDER = ""
 
 CAMERA = None
 
@@ -47,6 +48,8 @@ class CameraWorker(QtCore.QObject):
         n = 0
         print("Starting Loop")
         while True:
+            if n >= 12:
+                break
             # wait on serial communication
             if s.in_waiting > 0 or True:
                 time.sleep(1)
@@ -71,7 +74,7 @@ class CameraWorker(QtCore.QObject):
                             print("Drawing")
                             self.progress.emit(frame)
                             print("Done Drawing")
-                            final_filename = os.path.join(f, self.filename + str(n) + ".tiff")
+                            final_filename = os.path.join(f, self.filename + date + "_" + str(n) + ".tiff")
                             print(final_filename)
                             frame.convert_pixel_format(PixelFormat.Mono8)
                             cv2.imwrite(final_filename,
@@ -80,9 +83,6 @@ class CameraWorker(QtCore.QObject):
                             # send a message to indicate a picture was saved
                             s.write(b"finished\n")
                             s.flush()
-                    
-                if n == 2:
-                    break
 
                 elif message == "finished-imaging\r\n":
                     # exit the control loop
@@ -108,7 +108,6 @@ class My_App(QtWidgets.QMainWindow):
                 self.setup_camera(cam)
 
         self.filename_variables = OrderedDict()
-
         self.filename_variables['type'] = None
         self.filename_variables['standard'] = None
         self.filename_variables['subtype'] = None
@@ -128,13 +127,11 @@ class My_App(QtWidgets.QMainWindow):
 
         self.start_imaging_button.clicked.connect(
             self.start_imaging_thread)
-            
+                    
         # Assign buttons for labeling
         button_group_dict = {}
-
-        self.FastenerTypeGroup.buttonClicked.connect(self.assign_type)
         self.FastenerTypeGroup.buttonClicked.connect(self.change_fastener_stack)
-        self.FastenerTypeGroup.buttonClicked.connect(self.reset_filename_variables)
+        self.FastenerTypeGroup.buttonClicked.connect(self.reset_filename_variables_when_changing_fastener)
         button_group_dict['FastenerTypeGroup'] = self.FastenerTypeGroup
         self.NutDiameterMetricGroup.buttonClicked.connect(self.assign_diameter)
         button_group_dict['NutDiameterMetricGroup'] = self.NutDiameterMetricGroup
@@ -195,6 +192,9 @@ class My_App(QtWidgets.QMainWindow):
         # Mass-connecting all buttons groups to one function
         for group_name, button_group in button_group_dict.items():
             button_group.buttonClicked.connect(self.update_fastener_filename)
+
+        self.upload_gdrive_button.clicked.connect(self.upload_to_gdrive)
+        self.discard_images_button.clicked.connect(self.redo_imaging)
 
     def assign_height(self,pressed_button):
         self.filename_variables['height'] = pressed_button.text()
@@ -273,6 +273,16 @@ class My_App(QtWidgets.QMainWindow):
             if type(val) is str:
                 current_name += val + "_"
         self.fastener_filename.setText(current_name)
+
+    def reset_filename_variables_when_changing_fastener(self, pressed_button):
+        text = pressed_button.text()
+        if self.filename_variables['type'] == text:
+            # effect of clicking on the same button
+            return
+        else:
+            self.reset_filename_variables()
+            self.filename_variables['type'] = text
+            self.fastener_filename.setText(text)
     
     def start_imaging_thread(self):
         self.camera_thread = QtCore.QThread()
@@ -281,7 +291,7 @@ class My_App(QtWidgets.QMainWindow):
         # Connect signals/slots
         self.camera_thread.started.connect(self.worker.run)
         self.worker.progress.connect(self.draw_image_on_gui)
-        self.worker.upload.connect(self.upload_to_gdrive)
+        self.worker.upload.connect(self.ask_user_for_upload_decision)
         self.worker.finished.connect(self.camera_thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
         self.camera_thread.finished.connect(self.camera_thread.deleteLater)
@@ -291,9 +301,30 @@ class My_App(QtWidgets.QMainWindow):
         # switch to camera tab
         self.tabWidget.setCurrentIndex(1)
 
-    def upload_to_gdrive(self, image_directory):
+    def redo_imaging(self):
+        # May contain more cleanup later
+        self.start_imaging_thread()
+
+    def ask_user_for_upload_decision(self, image_directory):
+        global CURRENT_STAGED_IMAGE_FOLDER
+        CURRENT_STAGED_IMAGE_FOLDER = image_directory
+        # draw images on the page
+        images = [os.path.join(image_directory, x) for x in os.listdir(image_directory)]
+        print(images)
+        photo_labels = [self.photo1, self.photo2, self.photo3, self.photo4,
+                        self.photo5, self.photo6, self.photo7, self.photo8,
+                        self.photo9, self.photo10, self.photo11, self.photo12]
+        for img, label in zip(images, photo_labels):
+            image = cv2.imread(img)
+            resized_photo = self.resize_cv_photo(image, 5)
+            pixmap = self.convert_cv_to_pixmap(resized_photo)            
+            label.setPixmap(pixmap)
+        self.tabWidget.setCurrentIndex(2)
+
+    def upload_to_gdrive(self):
         # Split input so the gdrive only has the imaging_test_../ folder,
         # and we don't upload the images/ parent folder too
+        image_directory = CURRENT_STAGED_IMAGE_FOLDER
         lowest_level_folder = os.path.split(image_directory)[-1]
         upload_path = os.path.join(REMOTE_IMAGE_FOLDER, lowest_level_folder)
         print(f"Uploading to Drive. Path: {upload_path}")
@@ -355,7 +386,7 @@ class My_App(QtWidgets.QMainWindow):
                         'Camera does not support a OpenCV compatible format natively. Abort.')        
 
     def draw_image_on_gui(self, frame: Frame):
-        resized_photo = self.shrink(frame.as_opencv_image())
+        resized_photo = self.resize_cv_photo(frame.as_opencv_image(), 20)
         pixmap = self.convert_cv_to_pixmap(resized_photo)
         self.camera_feed.setPixmap(pixmap)
 
@@ -367,9 +398,9 @@ class My_App(QtWidgets.QMainWindow):
                              bytesPerLine, QtGui.QImage.Format_RGB888)
         return QtGui.QPixmap.fromImage(q_img)
 
-    def shrink(self, cv_img):
-        width = int(cv_img.shape[1] * 20 / 100)
-        height = int(cv_img.shape[0] * 20 / 100)
+    def resize_cv_photo(self, cv_img, percentage):
+        width = int(cv_img.shape[1] * percentage / 100)
+        height = int(cv_img.shape[0] * percentage / 100)
 
         resized = cv2.resize(cv_img, (width, height),
                              interpolation=cv2.INTER_AREA)
