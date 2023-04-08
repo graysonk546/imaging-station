@@ -116,27 +116,145 @@ class My_App(QtWidgets.QMainWindow):
 
         self.start_imaging_button.clicked.connect(
             self.start_imaging_thread)
-
+            
         # Assign buttons for labeling
-        self.FastenerTypeGroup.buttonClicked.connect(self.assign_fastener_type)
-        self.FastenerTypeGroup.buttonClicked.connect(self.update_fastener_filename)
-        self.MetricSizeGroup.buttonClicked.connect(self.assign_fastener_diameter)
-        self.MetricSizeGroup.buttonClicked.connect(self.update_fastener_filename)
-        self.MetricLengthGroup.buttonClicked.connect(self.assign_fastener_length)
-        self.MetricLengthGroup.buttonClicked.connect(self.update_fastener_filename)
-        self.HeadTypeGroup.buttonClicked.connect(self.assign_fastener_head)
-        self.HeadTypeGroup.buttonClicked.connect(self.update_fastener_filename)
+        button_group_dict = {}
 
-    def assign_fastener_type(self, pressed_button):
+        self.FastenerTypeGroup.buttonClicked.connect(self.assign_type)
+        self.FastenerTypeGroup.buttonClicked.connect(self.change_fastener_stack)
+        button_group_dict['FastenerTypeGroup'] = self.FastenerTypeGroup
+        self.NutDiameterMetricGroup.buttonClicked.connect(self.assign_diameter)
+        button_group_dict['NutDiameterMetricGroup'] = self.NutDiameterMetricGroup
+        self.NutFinishGroup.buttonClicked.connect(self.assign_finish)
+        button_group_dict['NutFinishGroup'] = self.NutFinishGroup
+        self.NutHeightMetricGroup.buttonClicked.connect(self.assign_height)
+        button_group_dict['NutHeightMetricGroup'] = self.NutHeightMetricGroup
+        self.NutMaterialGroup.buttonClicked.connect(self.assign_material)
+        button_group_dict['NutMaterialGroup'] = self.NutMaterialGroup
+        self.NutPitchMetricGroup.buttonClicked.connect(self.assign_pitch)
+        button_group_dict['NutPitchMetricGroup'] = self.NutPitchMetricGroup
+        self.NutStandardGroup.buttonClicked.connect(self.assign_standard)
+        self.NutStandardGroup.buttonClicked.connect(self.change_nut_standard_stack)
+        button_group_dict['NutStandardGroup'] = self.NutStandardGroup
+        self.NutThreadingGroup.buttonClicked.connect(self.assign_threading_direction)
+        button_group_dict['NutThreadingGroup'] = self.NutThreadingGroup
+        self.NutTypeGroup.buttonClicked.connect(self.assign_subtype)
+        button_group_dict['NutTypeGroup'] = self.NutTypeGroup
+        self.NutWidthMetricGroup.buttonClicked.connect(self.assign_width)
+        button_group_dict['NutWidthMetricGroup'] = self.NutWidthMetricGroup
+
+        self.ScrewDiameterMetricGroup.buttonClicked.connect(self.assign_diameter)
+        button_group_dict['ScrewDiameterMetricGroup'] = self.ScrewDiameterMetricGroup
+        self.ScrewDriveGroup.buttonClicked.connect(self.assign_drive)
+        button_group_dict['ScrewDriveGroup'] = self.ScrewDriveGroup
+        self.ScrewFinishGroup.buttonClicked.connect(self.assign_finish)
+        button_group_dict['ScrewFinishGroup'] = self.ScrewFinishGroup
+        self.ScrewHeadGroup.buttonClicked.connect(self.assign_head)
+        button_group_dict['ScrewHeadGroup'] = self.ScrewHeadGroup
+        self.ScrewLengthMetricGroup.buttonClicked.connect(self.assign_length)
+        button_group_dict['ScrewLengthMetricGroup'] = self.ScrewLengthMetricGroup
+        self.ScrewMaterialGroup.buttonClicked.connect(self.assign_material)
+        button_group_dict['ScrewMaterialGroup'] = self.ScrewMaterialGroup
+        self.ScrewPitchMetricGroup.buttonClicked.connect(self.assign_pitch)
+        button_group_dict['ScrewPitchMetricGroup'] = self.ScrewPitchMetricGroup
+        self.ScrewStandardGroup.buttonClicked.connect(self.assign_standard)
+        self.ScrewStandardGroup.buttonClicked.connect(self.change_screw_standard_stack)
+        button_group_dict['ScrewStandardGroup'] = self.ScrewStandardGroup
+        self.ScrewThreadingGroup.buttonClicked.connect(self.assign_threading_direction)
+        button_group_dict['ScrewThreadingGroup'] = self.ScrewThreadingGroup
+
+        self.WasherFinishGroup.buttonClicked.connect(self.assign_finish)
+        button_group_dict['WasherFinishGroup'] = self.WasherFinishGroup
+        self.WasherInnerDiameterMetricGroup.buttonClicked.connect(self.assign_inner_diameter)
+        button_group_dict['WasherInnerDiameterMetricGroup'] = self.WasherInnerDiameterMetricGroup
+        self.WasherMaterialGroup.buttonClicked.connect(self.assign_material)
+        button_group_dict['WasherMaterialGroup'] = self.WasherMaterialGroup
+        self.WasherOuterDiameterMetricGroup.buttonClicked.connect(self.assign_outer_diameter)
+        button_group_dict['WasherOuterDiameterMetricGroup'] = self.WasherOuterDiameterMetricGroup
+        self.WasherStandardGroup.buttonClicked.connect(self.assign_standard)
+        self.WasherStandardGroup.buttonClicked.connect(self.change_washer_standard_stack)
+        button_group_dict['WasherStandardGroup'] = self.WasherStandardGroup
+        self.WasherThicknessMetricGroup.buttonClicked.connect(self.assign_thickness)
+        button_group_dict['WasherThicknessMetricGroup'] = self.WasherThicknessMetricGroup
+        self.WasherTypeGroup.buttonClicked.connect(self.assign_subtype)
+        button_group_dict['WasherTypeGroup'] = self.WasherTypeGroup
+
+        # Mass-connecting all buttons groups to one function
+        for group_name, button_group in button_group_dict.items():
+            button_group.buttonClicked.connect(self.update_fastener_filename)
+
+    def assign_height(self,pressed_button):
+        self.filename_variables['height'] = pressed_button.text()
+
+    def assign_width(self,pressed_button):
+        self.filename_variables['width'] = pressed_button.text()
+
+    def assign_drive(self,pressed_button):
+        self.filename_variables['drive'] = pressed_button.text()
+
+    def assign_pitch(self,pressed_button):
+        self.filename_variables['pitch'] = pressed_button.text()
+    
+    def change_nut_standard_stack(self,pressed_button):
+        if pressed_button.text() == "Inch":
+            self.nut_standard_stack.setCurrentIndex(1)
+        elif pressed_button.text() == "Metric":
+            self.nut_standard_stack.setCurrentIndex(2)
+
+    def change_screw_standard_stack(self,pressed_button):
+        if pressed_button.text() == "Inch":
+            self.screw_standard_stack.setCurrentIndex(1)
+        elif pressed_button.text() == "Metric":
+            self.screw_standard_stack.setCurrentIndex(2)
+
+    def assign_threading_direction(self,pressed_button):
+        self.filename_variables['threading_direction'] = pressed_button.text()
+
+    def assign_finish(self,pressed_button):
+        self.filename_variables['finish'] = pressed_button.text()
+
+    def assign_inner_diameter(self,pressed_button):
+        self.filename_variables['inner_diameter'] = pressed_button.text()
+
+    def assign_material(self,pressed_button):
+        self.filename_variables['material'] = pressed_button.text()
+
+    def assign_outer_diameter(self,pressed_button):
+        self.filename_variables['outer_diameter'] = pressed_button.text()
+
+    def assign_standard(self, pressed_button):
+        self.filename_variables['standard'] = pressed_button.text()
+        
+    def change_washer_standard_stack(self, pressed_button):
+        if pressed_button.text() == "Inch":
+            self.washer_standard_stack.setCurrentIndex(1)
+        elif pressed_button.text() == "Metric":
+            self.washer_standard_stack.setCurrentIndex(2)
+
+    def assign_thickness(self, pressed_button):
+        self.filename_variables['thickness'] = pressed_button.text()
+
+    def change_fastener_stack(self, pressed_button):
+        if pressed_button.text() == "Screw":
+            self.fastener_stack.setCurrentIndex(1)
+        elif pressed_button.text() == "Washer":
+            self.fastener_stack.setCurrentIndex(2)
+        elif pressed_button.text() == "Nut":
+            self.fastener_stack.setCurrentIndex(3)
+
+    def assign_type(self, pressed_button):
         self.filename_variables['type'] = pressed_button.text()
 
-    def assign_fastener_diameter(self, pressed_button):
+    def assign_subtype(self, pressed_button):
+        self.filename_variables['subtype'] = pressed_button.text()
+
+    def assign_diameter(self, pressed_button):
         self.filename_variables['diameter'] = pressed_button.text()
 
-    def assign_fastener_length(self, pressed_button):
+    def assign_length(self, pressed_button):
         self.filename_variables['length'] = pressed_button.text()
 
-    def assign_fastener_head(self, pressed_button):
+    def assign_head(self, pressed_button):
         self.filename_variables['head'] = pressed_button.text()
 
     def update_fastener_filename(self):
