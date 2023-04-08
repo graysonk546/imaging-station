@@ -17,6 +17,7 @@ from rclone_python import rclone
 
 FOLDER_NAME = "images/imaging_test_{date}"
 REMOTE_IMAGE_FOLDER = "gdrive:2306\ Screw\ Sorter/Data/real_image_sets/"
+CURRENT_STAGED_IMAGE_FOLDER = ""
 
 CAMERA = None
 
@@ -47,11 +48,13 @@ class CameraWorker(QtCore.QObject):
         n = 0
         print("Starting Loop")
         while True:
+            if n >= 12:
+                break
             # wait on serial communication
             if s.in_waiting > 0 or True:
                 time.sleep(1)
-                # message = "picture\r\n"
-                message = s.readline().decode("ascii")
+                message = "picture\r\n"
+                # message = s.readline().decode("ascii")
                 if message == "picture\r\n":
                     print("Obtaining Frame")
                     # requirement that Vimba instance is opened using "with"
@@ -71,7 +74,7 @@ class CameraWorker(QtCore.QObject):
                             print("Drawing")
                             self.progress.emit(frame)
                             print("Done Drawing")
-                            final_filename = os.path.join(f, self.filename + str(n) + ".tiff")
+                            final_filename = os.path.join(f, self.filename + date + "_" + str(n) + ".tiff")
                             print(final_filename)
                             frame.convert_pixel_format(PixelFormat.Mono8)
                             cv2.imwrite(final_filename,
@@ -80,9 +83,6 @@ class CameraWorker(QtCore.QObject):
                             # send a message to indicate a picture was saved
                             s.write(b"finished\n")
                             s.flush()
-                    
-                # if n == 2:
-                    # break
 
                 elif message == "finished-imaging\r\n":
                     # exit the control loop
@@ -108,35 +108,163 @@ class My_App(QtWidgets.QMainWindow):
                 self.setup_camera(cam)
 
         self.filename_variables = OrderedDict()
-
         self.filename_variables['type'] = None
+        self.filename_variables['standard'] = None
+        self.filename_variables['subtype'] = None
         self.filename_variables['diameter'] = None
+        self.filename_variables['pitch'] = None
         self.filename_variables['length'] = None
+        self.filename_variables['width'] = None
+        self.filename_variables['inner_diameter'] = None
+        self.filename_variables['outer_diameter'] = None
+        self.filename_variables['height'] = None
         self.filename_variables['head'] = None
+        self.filename_variables['drive'] = None
+        self.filename_variables['direction'] = None
+        self.filename_variables['material'] = None
+        self.filename_variables['finish'] = None
+        self.filename_variables[''] = None
 
         self.start_imaging_button.clicked.connect(
             self.start_imaging_thread)
-
+                    
         # Assign buttons for labeling
-        self.FastenerTypeGroup.buttonClicked.connect(self.assign_fastener_type)
-        self.FastenerTypeGroup.buttonClicked.connect(self.update_fastener_filename)
-        self.MetricSizeGroup.buttonClicked.connect(self.assign_fastener_diameter)
-        self.MetricSizeGroup.buttonClicked.connect(self.update_fastener_filename)
-        self.MetricLengthGroup.buttonClicked.connect(self.assign_fastener_length)
-        self.MetricLengthGroup.buttonClicked.connect(self.update_fastener_filename)
-        self.HeadTypeGroup.buttonClicked.connect(self.assign_fastener_head)
-        self.HeadTypeGroup.buttonClicked.connect(self.update_fastener_filename)
+        button_group_dict = {}
+        self.FastenerTypeGroup.buttonClicked.connect(self.change_fastener_stack)
+        self.FastenerTypeGroup.buttonClicked.connect(self.reset_filename_variables_when_changing_fastener)
+        button_group_dict['FastenerTypeGroup'] = self.FastenerTypeGroup
+        self.NutDiameterMetricGroup.buttonClicked.connect(self.assign_diameter)
+        button_group_dict['NutDiameterMetricGroup'] = self.NutDiameterMetricGroup
+        self.NutFinishGroup.buttonClicked.connect(self.assign_finish)
+        button_group_dict['NutFinishGroup'] = self.NutFinishGroup
+        self.NutHeightMetricGroup.buttonClicked.connect(self.assign_height)
+        button_group_dict['NutHeightMetricGroup'] = self.NutHeightMetricGroup
+        self.NutMaterialGroup.buttonClicked.connect(self.assign_material)
+        button_group_dict['NutMaterialGroup'] = self.NutMaterialGroup
+        self.NutPitchMetricGroup.buttonClicked.connect(self.assign_pitch)
+        button_group_dict['NutPitchMetricGroup'] = self.NutPitchMetricGroup
+        self.NutStandardGroup.buttonClicked.connect(self.assign_standard)
+        self.NutStandardGroup.buttonClicked.connect(self.change_nut_standard_stack)
+        button_group_dict['NutStandardGroup'] = self.NutStandardGroup
+        self.NutDirectionGroup.buttonClicked.connect(self.assign_direction)
+        button_group_dict['NutDirectionGroup'] = self.NutDirectionGroup
+        self.NutTypeGroup.buttonClicked.connect(self.assign_subtype)
+        button_group_dict['NutTypeGroup'] = self.NutTypeGroup
+        self.NutWidthMetricGroup.buttonClicked.connect(self.assign_width)
+        button_group_dict['NutWidthMetricGroup'] = self.NutWidthMetricGroup
 
-    def assign_fastener_type(self, pressed_button):
+        self.ScrewDiameterMetricGroup.buttonClicked.connect(self.assign_diameter)
+        button_group_dict['ScrewDiameterMetricGroup'] = self.ScrewDiameterMetricGroup
+        self.ScrewDriveGroup.buttonClicked.connect(self.assign_drive)
+        button_group_dict['ScrewDriveGroup'] = self.ScrewDriveGroup
+        self.ScrewFinishGroup.buttonClicked.connect(self.assign_finish)
+        button_group_dict['ScrewFinishGroup'] = self.ScrewFinishGroup
+        self.ScrewHeadGroup.buttonClicked.connect(self.assign_head)
+        button_group_dict['ScrewHeadGroup'] = self.ScrewHeadGroup
+        self.ScrewLengthMetricGroup.buttonClicked.connect(self.assign_length)
+        button_group_dict['ScrewLengthMetricGroup'] = self.ScrewLengthMetricGroup
+        self.ScrewMaterialGroup.buttonClicked.connect(self.assign_material)
+        button_group_dict['ScrewMaterialGroup'] = self.ScrewMaterialGroup
+        self.ScrewPitchMetricGroup.buttonClicked.connect(self.assign_pitch)
+        button_group_dict['ScrewPitchMetricGroup'] = self.ScrewPitchMetricGroup
+        self.ScrewStandardGroup.buttonClicked.connect(self.assign_standard)
+        self.ScrewStandardGroup.buttonClicked.connect(self.change_screw_standard_stack)
+        button_group_dict['ScrewStandardGroup'] = self.ScrewStandardGroup
+        self.ScrewDirectionGroup.buttonClicked.connect(self.assign_direction)
+        button_group_dict['ScrewDirectionGroup'] = self.ScrewDirectionGroup
+
+        self.WasherFinishGroup.buttonClicked.connect(self.assign_finish)
+        button_group_dict['WasherFinishGroup'] = self.WasherFinishGroup
+        self.WasherInnerDiameterMetricGroup.buttonClicked.connect(self.assign_inner_diameter)
+        button_group_dict['WasherInnerDiameterMetricGroup'] = self.WasherInnerDiameterMetricGroup
+        self.WasherMaterialGroup.buttonClicked.connect(self.assign_material)
+        button_group_dict['WasherMaterialGroup'] = self.WasherMaterialGroup
+        self.WasherOuterDiameterMetricGroup.buttonClicked.connect(self.assign_outer_diameter)
+        button_group_dict['WasherOuterDiameterMetricGroup'] = self.WasherOuterDiameterMetricGroup
+        self.WasherStandardGroup.buttonClicked.connect(self.assign_standard)
+        self.WasherStandardGroup.buttonClicked.connect(self.change_washer_standard_stack)
+        button_group_dict['WasherStandardGroup'] = self.WasherStandardGroup
+        self.WasherHeightMetricGroup.buttonClicked.connect(self.assign_height)
+        button_group_dict['WasherHeightMetricGroup'] = self.WasherHeightMetricGroup
+        self.WasherTypeGroup.buttonClicked.connect(self.assign_subtype)
+        button_group_dict['WasherTypeGroup'] = self.WasherTypeGroup
+
+        # Mass-connecting all buttons groups to one function
+        for group_name, button_group in button_group_dict.items():
+            button_group.buttonClicked.connect(self.update_fastener_filename)
+
+        self.upload_gdrive_button.clicked.connect(self.upload_to_gdrive)
+        self.discard_images_button.clicked.connect(self.redo_imaging)
+
+    def assign_height(self,pressed_button):
+        self.filename_variables['height'] = pressed_button.text()
+
+    def assign_width(self,pressed_button):
+        self.filename_variables['width'] = pressed_button.text()
+
+    def assign_drive(self,pressed_button):
+        self.filename_variables['drive'] = pressed_button.text()
+
+    def assign_pitch(self,pressed_button):
+        self.filename_variables['pitch'] = pressed_button.text()
+    
+    def change_nut_standard_stack(self,pressed_button):
+        if pressed_button.text() == "Inch":
+            self.nut_standard_stack.setCurrentIndex(1)
+        elif pressed_button.text() == "Metric":
+            self.nut_standard_stack.setCurrentIndex(2)
+
+    def change_screw_standard_stack(self,pressed_button):
+        if pressed_button.text() == "Inch":
+            self.screw_standard_stack.setCurrentIndex(1)
+        elif pressed_button.text() == "Metric":
+            self.screw_standard_stack.setCurrentIndex(2)
+
+    def assign_direction(self,pressed_button):
+        self.filename_variables['direction'] = pressed_button.text()
+
+    def assign_finish(self,pressed_button):
+        self.filename_variables['finish'] = pressed_button.text()
+
+    def assign_inner_diameter(self,pressed_button):
+        self.filename_variables['inner_diameter'] = pressed_button.text()
+
+    def assign_material(self,pressed_button):
+        self.filename_variables['material'] = pressed_button.text()
+
+    def assign_outer_diameter(self,pressed_button):
+        self.filename_variables['outer_diameter'] = pressed_button.text()
+
+    def assign_standard(self, pressed_button):
+        self.filename_variables['standard'] = pressed_button.text()
+        
+    def change_washer_standard_stack(self, pressed_button):
+        if pressed_button.text() == "Inch":
+            self.washer_standard_stack.setCurrentIndex(1)
+        elif pressed_button.text() == "Metric":
+            self.washer_standard_stack.setCurrentIndex(2)
+
+    def change_fastener_stack(self, pressed_button):
+        if pressed_button.text() == "Screw":
+            self.fastener_stack.setCurrentIndex(1)
+        elif pressed_button.text() == "Washer":
+            self.fastener_stack.setCurrentIndex(2)
+        elif pressed_button.text() == "Nut":
+            self.fastener_stack.setCurrentIndex(3)
+
+    def assign_type(self, pressed_button):
         self.filename_variables['type'] = pressed_button.text()
 
-    def assign_fastener_diameter(self, pressed_button):
+    def assign_subtype(self, pressed_button):
+        self.filename_variables['subtype'] = pressed_button.text()
+
+    def assign_diameter(self, pressed_button):
         self.filename_variables['diameter'] = pressed_button.text()
 
-    def assign_fastener_length(self, pressed_button):
+    def assign_length(self, pressed_button):
         self.filename_variables['length'] = pressed_button.text()
 
-    def assign_fastener_head(self, pressed_button):
+    def assign_head(self, pressed_button):
         self.filename_variables['head'] = pressed_button.text()
 
     def update_fastener_filename(self):
@@ -145,6 +273,16 @@ class My_App(QtWidgets.QMainWindow):
             if type(val) is str:
                 current_name += val + "_"
         self.fastener_filename.setText(current_name)
+
+    def reset_filename_variables_when_changing_fastener(self, pressed_button):
+        text = pressed_button.text()
+        if self.filename_variables['type'] == text:
+            # effect of clicking on the same button
+            return
+        else:
+            self.reset_filename_variables()
+            self.filename_variables['type'] = text
+            self.fastener_filename.setText(text)
     
     def start_imaging_thread(self):
         self.camera_thread = QtCore.QThread()
@@ -153,25 +291,47 @@ class My_App(QtWidgets.QMainWindow):
         # Connect signals/slots
         self.camera_thread.started.connect(self.worker.run)
         self.worker.progress.connect(self.draw_image_on_gui)
-        self.worker.upload.connect(self.upload_to_gdrive)
+        self.worker.upload.connect(self.ask_user_for_upload_decision)
         self.worker.finished.connect(self.camera_thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
         self.camera_thread.finished.connect(self.camera_thread.deleteLater)
-        self.camera_thread.finished.connect(self.clean_up_between_runs)
+        self.camera_thread.finished.connect(self.reset_filename_variables)
         self.camera_thread.start()
 
         # switch to camera tab
         self.tabWidget.setCurrentIndex(1)
 
-    def upload_to_gdrive(self, image_directory):
+    def redo_imaging(self):
+        # May contain more cleanup later
+        self.start_imaging_thread()
+
+    def ask_user_for_upload_decision(self, image_directory):
+        global CURRENT_STAGED_IMAGE_FOLDER
+        CURRENT_STAGED_IMAGE_FOLDER = image_directory
+        # draw images on the page
+        images = [os.path.join(image_directory, x) for x in os.listdir(image_directory)]
+        print(images)
+        photo_labels = [self.photo1, self.photo2, self.photo3, self.photo4,
+                        self.photo5, self.photo6, self.photo7, self.photo8,
+                        self.photo9, self.photo10, self.photo11, self.photo12]
+        for img, label in zip(images, photo_labels):
+            image = cv2.imread(img)
+            resized_photo = self.resize_cv_photo(image, 5)
+            pixmap = self.convert_cv_to_pixmap(resized_photo)            
+            label.setPixmap(pixmap)
+        self.tabWidget.setCurrentIndex(2)
+
+    def upload_to_gdrive(self):
         # Split input so the gdrive only has the imaging_test_../ folder,
         # and we don't upload the images/ parent folder too
+        image_directory = CURRENT_STAGED_IMAGE_FOLDER
         lowest_level_folder = os.path.split(image_directory)[-1]
         upload_path = os.path.join(REMOTE_IMAGE_FOLDER, lowest_level_folder)
         print(f"Uploading to Drive. Path: {upload_path}")
         rclone.copy(image_directory, upload_path)
+        print(f"Upload complete")
 
-    def clean_up_between_runs(self):
+    def reset_filename_variables(self):
         # Reset variables for the next thread imaging suite
         for key in self.filename_variables:
             self.filename_variables[key] = None
@@ -226,7 +386,7 @@ class My_App(QtWidgets.QMainWindow):
                         'Camera does not support a OpenCV compatible format natively. Abort.')        
 
     def draw_image_on_gui(self, frame: Frame):
-        resized_photo = self.shrink(frame.as_opencv_image())
+        resized_photo = self.resize_cv_photo(frame.as_opencv_image(), 20)
         pixmap = self.convert_cv_to_pixmap(resized_photo)
         self.camera_feed.setPixmap(pixmap)
 
@@ -238,9 +398,9 @@ class My_App(QtWidgets.QMainWindow):
                              bytesPerLine, QtGui.QImage.Format_RGB888)
         return QtGui.QPixmap.fromImage(q_img)
 
-    def shrink(self, cv_img):
-        width = int(cv_img.shape[1] * 20 / 100)
-        height = int(cv_img.shape[0] * 20 / 100)
+    def resize_cv_photo(self, cv_img, percentage):
+        width = int(cv_img.shape[1] * percentage / 100)
+        height = int(cv_img.shape[0] * percentage / 100)
 
         resized = cv2.resize(cv_img, (width, height),
                              interpolation=cv2.INTER_AREA)
