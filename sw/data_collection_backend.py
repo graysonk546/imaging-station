@@ -110,9 +110,21 @@ class My_App(QtWidgets.QMainWindow):
         self.filename_variables = OrderedDict()
 
         self.filename_variables['type'] = None
+        self.filename_variables['standard'] = None
+        self.filename_variables['subtype'] = None
         self.filename_variables['diameter'] = None
+        self.filename_variables['pitch'] = None
         self.filename_variables['length'] = None
+        self.filename_variables['width'] = None
+        self.filename_variables['inner_diameter'] = None
+        self.filename_variables['outer_diameter'] = None
+        self.filename_variables['height'] = None
         self.filename_variables['head'] = None
+        self.filename_variables['drive'] = None
+        self.filename_variables['direction'] = None
+        self.filename_variables['material'] = None
+        self.filename_variables['finish'] = None
+        self.filename_variables[''] = None
 
         self.start_imaging_button.clicked.connect(
             self.start_imaging_thread)
@@ -122,6 +134,7 @@ class My_App(QtWidgets.QMainWindow):
 
         self.FastenerTypeGroup.buttonClicked.connect(self.assign_type)
         self.FastenerTypeGroup.buttonClicked.connect(self.change_fastener_stack)
+        self.FastenerTypeGroup.buttonClicked.connect(self.reset_filename_variables)
         button_group_dict['FastenerTypeGroup'] = self.FastenerTypeGroup
         self.NutDiameterMetricGroup.buttonClicked.connect(self.assign_diameter)
         button_group_dict['NutDiameterMetricGroup'] = self.NutDiameterMetricGroup
@@ -136,8 +149,8 @@ class My_App(QtWidgets.QMainWindow):
         self.NutStandardGroup.buttonClicked.connect(self.assign_standard)
         self.NutStandardGroup.buttonClicked.connect(self.change_nut_standard_stack)
         button_group_dict['NutStandardGroup'] = self.NutStandardGroup
-        self.NutThreadingGroup.buttonClicked.connect(self.assign_threading_direction)
-        button_group_dict['NutThreadingGroup'] = self.NutThreadingGroup
+        self.NutDirectionGroup.buttonClicked.connect(self.assign_direction)
+        button_group_dict['NutDirectionGroup'] = self.NutDirectionGroup
         self.NutTypeGroup.buttonClicked.connect(self.assign_subtype)
         button_group_dict['NutTypeGroup'] = self.NutTypeGroup
         self.NutWidthMetricGroup.buttonClicked.connect(self.assign_width)
@@ -160,8 +173,8 @@ class My_App(QtWidgets.QMainWindow):
         self.ScrewStandardGroup.buttonClicked.connect(self.assign_standard)
         self.ScrewStandardGroup.buttonClicked.connect(self.change_screw_standard_stack)
         button_group_dict['ScrewStandardGroup'] = self.ScrewStandardGroup
-        self.ScrewThreadingGroup.buttonClicked.connect(self.assign_threading_direction)
-        button_group_dict['ScrewThreadingGroup'] = self.ScrewThreadingGroup
+        self.ScrewDirectionGroup.buttonClicked.connect(self.assign_direction)
+        button_group_dict['ScrewDirectionGroup'] = self.ScrewDirectionGroup
 
         self.WasherFinishGroup.buttonClicked.connect(self.assign_finish)
         button_group_dict['WasherFinishGroup'] = self.WasherFinishGroup
@@ -174,8 +187,8 @@ class My_App(QtWidgets.QMainWindow):
         self.WasherStandardGroup.buttonClicked.connect(self.assign_standard)
         self.WasherStandardGroup.buttonClicked.connect(self.change_washer_standard_stack)
         button_group_dict['WasherStandardGroup'] = self.WasherStandardGroup
-        self.WasherThicknessMetricGroup.buttonClicked.connect(self.assign_thickness)
-        button_group_dict['WasherThicknessMetricGroup'] = self.WasherThicknessMetricGroup
+        self.WasherHeightMetricGroup.buttonClicked.connect(self.assign_height)
+        button_group_dict['WasherHeightMetricGroup'] = self.WasherHeightMetricGroup
         self.WasherTypeGroup.buttonClicked.connect(self.assign_subtype)
         button_group_dict['WasherTypeGroup'] = self.WasherTypeGroup
 
@@ -207,8 +220,8 @@ class My_App(QtWidgets.QMainWindow):
         elif pressed_button.text() == "Metric":
             self.screw_standard_stack.setCurrentIndex(2)
 
-    def assign_threading_direction(self,pressed_button):
-        self.filename_variables['threading_direction'] = pressed_button.text()
+    def assign_direction(self,pressed_button):
+        self.filename_variables['direction'] = pressed_button.text()
 
     def assign_finish(self,pressed_button):
         self.filename_variables['finish'] = pressed_button.text()
@@ -230,9 +243,6 @@ class My_App(QtWidgets.QMainWindow):
             self.washer_standard_stack.setCurrentIndex(1)
         elif pressed_button.text() == "Metric":
             self.washer_standard_stack.setCurrentIndex(2)
-
-    def assign_thickness(self, pressed_button):
-        self.filename_variables['thickness'] = pressed_button.text()
 
     def change_fastener_stack(self, pressed_button):
         if pressed_button.text() == "Screw":
@@ -275,7 +285,7 @@ class My_App(QtWidgets.QMainWindow):
         self.worker.finished.connect(self.camera_thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
         self.camera_thread.finished.connect(self.camera_thread.deleteLater)
-        self.camera_thread.finished.connect(self.clean_up_between_runs)
+        self.camera_thread.finished.connect(self.reset_filename_variables)
         self.camera_thread.start()
 
         # switch to camera tab
@@ -290,7 +300,7 @@ class My_App(QtWidgets.QMainWindow):
         rclone.copy(image_directory, upload_path)
         print(f"Upload complete")
 
-    def clean_up_between_runs(self):
+    def reset_filename_variables(self):
         # Reset variables for the next thread imaging suite
         for key in self.filename_variables:
             self.filename_variables[key] = None
