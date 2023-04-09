@@ -26,10 +26,13 @@ class CameraWorker(QtCore.QObject):
     upload = QtCore.pyqtSignal(str)
     finished = QtCore.pyqtSignal()
     progress = QtCore.pyqtSignal(Frame)
+    change_camera_settings = QtCore.pyqtSignal(int)
 
     def __init__(self, filename):
         super(CameraWorker, self).__init__()
         self.filename = filename
+        self.top_down_exposure_us = 10000  # placeholder value
+        self.side_view_exposure_us = 1234567  # placeholder value
 
     def run(self):
         # establish serial communication with Bluepill
@@ -47,8 +50,18 @@ class CameraWorker(QtCore.QObject):
             os.mkdir("images")
         os.mkdir(f)
         n = 0
+
+        # Calibrate camera before starting camera loop
+        with CAMERA as cam:
+            self.change_camera_settings.emit(self.top_down_exposure_us)
+
         print("Starting Loop")
         while True:
+            # Change camera settings AFTER taking top-down shot (n=0)
+            if n == 1:
+                with CAMERA as cam:
+                    self.change_camera_settings.emit(
+                        self.side_view_exposure_us)
             if n >= 12:
                 break
             # wait on serial communication
@@ -302,6 +315,7 @@ class My_App(QtWidgets.QMainWindow):
         # Connect signals/slots
         self.camera_thread.started.connect(self.worker.run)
         self.worker.progress.connect(self.draw_image_on_gui)
+        self.worker.change_camera_settings.connect(self.setup_camera)
         self.worker.upload.connect(self.ask_user_for_upload_decision)
         self.worker.finished.connect(self.camera_thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
@@ -351,11 +365,16 @@ class My_App(QtWidgets.QMainWindow):
         # Unclick all buttons? No need?
         return
 
-    def setup_camera(self, cam: Camera):
+    def setup_camera(self, cam: Camera, exposure_us=None):
         with cam:
             # Enable auto exposure time setting if camera supports it
             try:
-                cam.ExposureAuto.set('Continuous')
+                # If exposure_us is set, manually change exposure value
+                if isinstance(exposure_us, int):
+                    cam.ExposureAuto.set('Off')
+                    cam.ExposureTime.set(exposure_us)
+                else:
+                    cam.ExposureAuto.set('Continuous')
 
             except (AttributeError, VimbaFeatureError):
                 pass
