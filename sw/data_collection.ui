@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1185</width>
+    <width>1838</width>
     <height>864</height>
    </rect>
   </property>
@@ -3945,10 +3945,36 @@
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="start_imaging_button">
-          <property name="text">
-           <string>Begin Imaging Process</string>
+         <widget class="QGroupBox" name="groupBox">
+          <property name="title">
+           <string>GroupBox</string>
           </property>
+          <widget class="QPushButton" name="start_imaging_button">
+           <property name="geometry">
+            <rect>
+             <x>577</x>
+             <y>0</y>
+             <width>1221</width>
+             <height>31</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>Begin Imaging Process</string>
+           </property>
+          </widget>
+          <widget class="QPushButton" name="activate_camera_feed">
+           <property name="geometry">
+            <rect>
+             <x>-1</x>
+             <y>0</y>
+             <width>561</width>
+             <height>31</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>Camera Feed</string>
+           </property>
+          </widget>
          </widget>
         </item>
        </layout>
@@ -4366,8 +4392,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1185</width>
-     <height>27</height>
+     <width>1838</width>
+     <height>20</height>
     </rect>
    </property>
   </widget>
@@ -4376,31 +4402,31 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="FastenerTypeGroup"/>
-  <buttongroup name="NutStandardGroup"/>
-  <buttongroup name="NutTypeGroup"/>
-  <buttongroup name="NutDirectionGroup"/>
-  <buttongroup name="NutMaterialGroup"/>
-  <buttongroup name="NutFinishGroup"/>
-  <buttongroup name="NutDiameterMetricGroup"/>
-  <buttongroup name="NutWidthMetricGroup"/>
-  <buttongroup name="NutHeightMetricGroup"/>
-  <buttongroup name="NutPitchMetricGroup"/>
-  <buttongroup name="ScrewStandardGroup"/>
-  <buttongroup name="ScrewDirectionGroup"/>
-  <buttongroup name="ScrewMaterialGroup"/>
-  <buttongroup name="ScrewDriveGroup"/>
-  <buttongroup name="ScrewFinishGroup"/>
-  <buttongroup name="ScrewHeadGroup"/>
-  <buttongroup name="ScrewDiameterMetricGroup"/>
-  <buttongroup name="ScrewLengthMetricGroup"/>
-  <buttongroup name="ScrewPitchMetricGroup"/>
   <buttongroup name="WasherStandardGroup"/>
-  <buttongroup name="WasherTypeGroup"/>
-  <buttongroup name="WasherFinishGroup"/>
-  <buttongroup name="WasherOuterDiameterMetricGroup"/>
   <buttongroup name="WasherInnerDiameterMetricGroup"/>
+  <buttongroup name="ScrewHeadGroup"/>
+  <buttongroup name="NutFinishGroup"/>
+  <buttongroup name="ScrewPitchMetricGroup"/>
   <buttongroup name="WasherHeightMetricGroup"/>
+  <buttongroup name="WasherFinishGroup"/>
+  <buttongroup name="NutStandardGroup"/>
+  <buttongroup name="NutMaterialGroup"/>
+  <buttongroup name="ScrewDirectionGroup"/>
+  <buttongroup name="WasherTypeGroup"/>
+  <buttongroup name="NutDirectionGroup"/>
+  <buttongroup name="FastenerTypeGroup"/>
+  <buttongroup name="ScrewLengthMetricGroup"/>
+  <buttongroup name="NutHeightMetricGroup"/>
+  <buttongroup name="NutWidthMetricGroup"/>
+  <buttongroup name="ScrewStandardGroup"/>
+  <buttongroup name="ScrewDriveGroup"/>
+  <buttongroup name="NutTypeGroup"/>
+  <buttongroup name="NutDiameterMetricGroup"/>
+  <buttongroup name="ScrewFinishGroup"/>
+  <buttongroup name="WasherOuterDiameterMetricGroup"/>
+  <buttongroup name="NutPitchMetricGroup"/>
+  <buttongroup name="ScrewMaterialGroup"/>
+  <buttongroup name="ScrewDiameterMetricGroup"/>
   <buttongroup name="WasherMaterialGroup"/>
  </buttongroups>
 </ui>
