@@ -53,13 +53,14 @@ class CameraWorker(QtCore.QObject):
                     time.sleep(1)
                     print("Frame saved to mem")
                     
+                    print("Starting inference")
                     frame_cv2 = frame.as_opencv_image()
                     frame_cv2 = self.display_helper.crop_scale(frame_cv2, scale=0.7)
                     prediction = self.model_helper.predict_single_image(frame_cv2)
 
                     # Draw directly
                     print("Drawing")
-                    frame_cv2 = self.display_helper.draw_prediction(frame_cv2, prediction)
+                    frame_cv2 = self.display_helper.draw_prediction(frame_cv2, prediction, self.model_helper.mapping)
                     self.progress.emit(frame_cv2)
                     print("Done Drawing")
                     timer += 1
@@ -69,7 +70,7 @@ class CameraWorker(QtCore.QObject):
         s = serial.Serial("/dev/ttyUSB0", 115200)
 
         if self.feed:
-            feed_loop()
+            self.feed_loop()
             self.finished.emit()
             return
 
@@ -330,8 +331,8 @@ class My_App(QtWidgets.QMainWindow):
             self.filename_variables['type'] = text
             self.fastener_filename.setText(text)
 
-    def start_feed_thread(self, feed=True):
-        self.start_imaging_thread(feed=feed)
+    def start_feed_thread(self):
+        self.start_imaging_thread(feed=True)
     
     def start_imaging_thread(self, feed=False):
         self.camera_thread = QtCore.QThread()

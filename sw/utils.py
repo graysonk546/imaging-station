@@ -11,12 +11,12 @@ import torchvision.transforms.transforms as T
 class ModelHelper:
     def __init__(self, model_path):
         self.mapping = {
-            1: "M3",
-            2: "M3.5",
-            3: "M4",
-            4: "I4",
-            5: "I6",
-            6: "I8",
+            1: "M2",
+            2: "M3",
+            #3: "M4",
+            #4: "I4",
+            #5: "I6",
+            #6: "I8",
         }
         self.device = torch.device('cuda') if torch.cuda.is_available() else \
                       torch.device('cpu')
@@ -149,7 +149,7 @@ class DisplayHelper:
         scaled = cv2.resize(cropped, (int(cropped.shape[1]/scale), int(cropped.shape[0]/scale)))
         return scaled
                                       
-    def draw_prediction(self, img, prediction):
+    def draw_prediction(self, img, prediction, mapping):
         boxes, labels, scores = prediction
         for i, b in enumerate(boxes):
             b_ints = []
@@ -157,7 +157,7 @@ class DisplayHelper:
                 b_ints.append(val.astype(int))
 
             img = cv2.rectangle(img, (b_ints[0], b_ints[1]), (b_ints[2], b_ints[3]), (36, 255, 12), 3)
-            img = cv2.putText(img, "{}: {:.3f}".format(self.model_helper.mapping[labels[i]], scores[i]), (b_ints[0], b_ints[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (36, 255, 12), 5)
+            img = cv2.putText(img, "{}: {:.3f}".format(mapping[labels[i]], scores[i]), (b_ints[0], b_ints[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (36, 255, 12), 5)
 
         return img
 
