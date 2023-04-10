@@ -15,6 +15,11 @@ from datetime import datetime
 from collections import OrderedDict
 from rclone_python import rclone
 
+import numpy
+import torch
+import torchvision.transforms.transforms as T
+from utils import ModelHelper, DisplayHelper
+
 FOLDER_NAME = "images/imaging_test_{date}"
 REMOTE_IMAGE_FOLDER = "gdrive:2306\ Screw\ Sorter/Data/real_image_sets/"
 CURRENT_STAGED_IMAGE_FOLDER = ""
@@ -24,15 +29,49 @@ CAMERA = None
 class CameraWorker(QtCore.QObject):
     upload = QtCore.pyqtSignal(str)
     finished = QtCore.pyqtSignal()
-    progress = QtCore.pyqtSignal(Frame)
+    progress = QtCore.pyqtSignal(numpy.ndarray)
 
-    def __init__(self, filename):
+    def __init__(self, filename, model_helper=None, display_helper=None,feed=False):
         super(CameraWorker, self).__init__()
         self.filename = filename
+        self.model_helper = model_helper
+        self.display_helper = display_helper
+        self.feed = feed
+
+    def feed_loop(self):
+        timer = 0 
+        while timer < 3:
+            with Vimba.get_instance() as vimba:
+                with CAMERA as cam:
+                    # set frame capture timeout at max exposure time
+                    try:
+                        frame = cam.get_frame(timeout_ms=1000000)
+                    except VimbaTimeout as e:
+                        print("Frame acquisition timed out: " + str(e))
+                        continue
+                    print("Got a frame")
+                    time.sleep(1)
+                    print("Frame saved to mem")
+                    
+                    frame_cv2 = frame.as_opencv_image()
+                    frame_cv2 = self.display_helper.crop_scale(frame_cv2, scale=0.7)
+                    prediction = self.model_helper.predict_single_image(frame_cv2)
+
+                    # Draw directly
+                    print("Drawing")
+                    frame_cv2 = self.display_helper.draw_prediction(frame_cv2, prediction)
+                    self.progress.emit(frame_cv2)
+                    print("Done Drawing")
+                    timer += 1
 
     def run(self):
         # establish serial communication with Bluepill
         s = serial.Serial("/dev/ttyUSB0", 115200)
+
+        if self.feed:
+            feed_loop()
+            self.finished.emit()
+            return
 
         # commence the imaging session with the "start" command
         time.sleep(1)
@@ -70,13 +109,15 @@ class CameraWorker(QtCore.QObject):
                             time.sleep(1)
                             print("Frame saved to mem")
                             
+                            frame_cv2 = frame.as_opencv_image()
+
                             # Draw directly
                             print("Drawing")
-                            self.progress.emit(frame)
+                            self.progress.emit(frame_cv2)
                             print("Done Drawing")
+
                             final_filename = os.path.join(f, self.filename + date + "_" + str(n) + ".tiff")
                             print(final_filename)
-                            frame.convert_pixel_format(PixelFormat.Mono8)
                             cv2.imwrite(final_filename,
                                         frame.as_opencv_image())
                             n += 1
@@ -91,7 +132,6 @@ class CameraWorker(QtCore.QObject):
         self.finished.emit()
 
 class My_App(QtWidgets.QMainWindow):
-
     def __init__(self):
         super(My_App, self).__init__()
         loadUi("./data_collection.ui", self)
@@ -100,7 +140,7 @@ class My_App(QtWidgets.QMainWindow):
         with Vimba.get_instance() as vimba:
             cams = vimba.get_all_cameras()
             if not cams:
-                abort('No Cameras accessible. Abort.')
+               raise Exception('No Cameras accessible. Abort.')
             self.cam = cams[0]
             global CAMERA
             CAMERA = self.cam
@@ -125,6 +165,9 @@ class My_App(QtWidgets.QMainWindow):
         self.filename_variables['finish'] = None
         self.filename_variables[''] = None
 
+        self.activate_camera_feed.clicked.connect(
+            self.start_feed_thread
+        )
         self.start_imaging_button.clicked.connect(
             self.start_imaging_thread)
                     
@@ -195,6 +238,9 @@ class My_App(QtWidgets.QMainWindow):
 
         self.upload_gdrive_button.clicked.connect(self.upload_to_gdrive)
         self.discard_images_button.clicked.connect(self.redo_imaging)
+
+        self.model_helper = ModelHelper("./model_v1_m2vsm3.pt")
+        self.display_helper = DisplayHelper()
 
     def assign_height(self,pressed_button):
         self.filename_variables['height'] = pressed_button.text()
@@ -283,10 +329,16 @@ class My_App(QtWidgets.QMainWindow):
             self.reset_filename_variables()
             self.filename_variables['type'] = text
             self.fastener_filename.setText(text)
+
+    def start_feed_thread(self, feed=True):
+        self.start_imaging_thread(feed=feed)
     
-    def start_imaging_thread(self):
+    def start_imaging_thread(self, feed=False):
         self.camera_thread = QtCore.QThread()
-        self.worker = CameraWorker(self.fastener_filename.text())
+        self.worker = CameraWorker(self.fastener_filename.text(),
+                                   model_helper = self.model_helper,
+                                   display_helper = self.display_helper,
+                                   feed = feed)
         self.worker.moveToThread(self.camera_thread)
         # Connect signals/slots
         self.camera_thread.started.connect(self.worker.run)
@@ -385,8 +437,8 @@ class My_App(QtWidgets.QMainWindow):
                     abort(
                         'Camera does not support a OpenCV compatible format natively. Abort.')        
 
-    def draw_image_on_gui(self, frame: Frame):
-        resized_photo = self.resize_cv_photo(frame.as_opencv_image(), 20)
+    def draw_image_on_gui(self, frame):
+        resized_photo = self.resize_cv_photo(frame, 20)
         pixmap = self.convert_cv_to_pixmap(resized_photo)
         self.camera_feed.setPixmap(pixmap)
 
