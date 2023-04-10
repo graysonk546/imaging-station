@@ -26,13 +26,13 @@ class CameraWorker(QtCore.QObject):
     upload = QtCore.pyqtSignal(str)
     finished = QtCore.pyqtSignal()
     progress = QtCore.pyqtSignal(Frame)
-    change_camera_settings = QtCore.pyqtSignal(int)
+    change_camera_settings = QtCore.pyqtSignal(Camera, int)
 
     def __init__(self, filename):
         super(CameraWorker, self).__init__()
         self.filename = filename
-        self.top_down_exposure_us = 10000  # placeholder value
-        self.side_view_exposure_us = 1234567  # placeholder value
+        self.top_down_exposure_us = 133952  # placeholder value
+        self.side_view_exposure_us = 723824  # placeholder value
 
     def run(self):
         # establish serial communication with Bluepill
@@ -52,23 +52,24 @@ class CameraWorker(QtCore.QObject):
         n = 0
 
         # Calibrate camera before starting camera loop
-        with CAMERA as cam:
-            self.change_camera_settings.emit(self.top_down_exposure_us)
+        print("before")
+        self.change_camera_settings.emit(CAMERA, self.top_down_exposure_us)
 
         print("Starting Loop")
         while True:
             # Change camera settings AFTER taking top-down shot (n=0)
             if n == 1:
-                with CAMERA as cam:
-                    self.change_camera_settings.emit(
+                print("sf")
+                self.change_camera_settings.emit(CAMERA, 
                         self.side_view_exposure_us)
+                n += 1
             if n >= 12:
                 break
             # wait on serial communication
-            if s.in_waiting > 0 or True:
-                time.sleep(1)
-                message = "picture\r\n"
-                # message = s.readline().decode("ascii")
+            if s.in_waiting > 0:
+                time.sleep(2)
+                # message = "picture\r\n"
+                message = s.readline().decode("ascii")
                 if message == "picture\r\n":
                     print("Obtaining Frame")
                     # requirement that Vimba instance is opened using "with"
@@ -120,8 +121,7 @@ class My_App(QtWidgets.QMainWindow):
             self.cam = cams[0]
             global CAMERA
             CAMERA = self.cam
-            with self.cam as cam:
-                self.setup_camera(cam)
+            self.setup_camera(self.cam)
 
         self.filename_variables = OrderedDict()
         self.filename_variables['type'] = None
@@ -366,55 +366,59 @@ class My_App(QtWidgets.QMainWindow):
         return
 
     def setup_camera(self, cam: Camera, exposure_us=None):
-        with cam:
-            # Enable auto exposure time setting if camera supports it
-            try:
-                # If exposure_us is set, manually change exposure value
-                if isinstance(exposure_us, int):
-                    cam.ExposureAuto.set('Off')
-                    cam.ExposureTime.set(exposure_us)
-                else:
-                    cam.ExposureAuto.set('Continuous')
+        print("setup")
+        with Vimba.get_instance() as vimba:
+            with cam:
+                # Enable auto exposure time setting if camera supports it
+                try:
+                    print("exposure")
+                    # If exposure_us is set, manually change exposure value
+                    if isinstance(exposure_us, int):
+                        cam.ExposureAuto.set('Off')
+                        cam.ExposureTime.set(exposure_us)
+                    else:
+                        cam.ExposureAuto.set('Continuous')
 
-            except (AttributeError, VimbaFeatureError):
-                pass
-
-            # Enable white balancing if camera supports it
-            try:
-                cam.BalanceWhiteAuto.set('Continuous')
-
-            except (AttributeError, VimbaFeatureError):
-                pass
-
-            # Try to adjust GeV packet size. This Feature is only available for GigE - Cameras.
-            try:
-                cam.GVSPAdjustPacketSize.run()
-
-                while not cam.GVSPAdjustPacketSize.is_done():
+                except (AttributeError, VimbaFeatureError) as e:
+                    print("error:" + str(e))
                     pass
 
-            except (AttributeError, VimbaFeatureError):
-                pass
+                # Enable white balancing if camera supports it
+                try:
+                    cam.BalanceWhiteAuto.set('Continuous')
 
-            # Query available, open_cv compatible pixel formats
-            # prefer color formats over monochrome formats
-            cv_fmts = intersect_pixel_formats(
-                cam.get_pixel_formats(), OPENCV_PIXEL_FORMATS)
-            color_fmts = intersect_pixel_formats(cv_fmts, COLOR_PIXEL_FORMATS)
+                except (AttributeError, VimbaFeatureError):
+                    pass
 
-            if color_fmts:
-                cam.set_pixel_format(color_fmts[0])
+                # Try to adjust GeV packet size. This Feature is only available for GigE - Cameras.
+                try:
+                    cam.GVSPAdjustPacketSize.run()
 
-            else:
-                mono_fmts = intersect_pixel_formats(
-                    cv_fmts, MONO_PIXEL_FORMATS)
+                    while not cam.GVSPAdjustPacketSize.is_done():
+                        pass
 
-                if mono_fmts:
-                    cam.set_pixel_format(mono_fmts[0])
+                except (AttributeError, VimbaFeatureError):
+                    pass
+
+                # Query available, open_cv compatible pixel formats
+                # prefer color formats over monochrome formats
+                cv_fmts = intersect_pixel_formats(
+                    cam.get_pixel_formats(), OPENCV_PIXEL_FORMATS)
+                color_fmts = intersect_pixel_formats(cv_fmts, COLOR_PIXEL_FORMATS)
+
+                if color_fmts:
+                    cam.set_pixel_format(color_fmts[0])
 
                 else:
-                    abort(
-                        'Camera does not support a OpenCV compatible format natively. Abort.')
+                    mono_fmts = intersect_pixel_formats(
+                        cv_fmts, MONO_PIXEL_FORMATS)
+
+                    if mono_fmts:
+                        cam.set_pixel_format(mono_fmts[0])
+
+                    else:
+                        abort(
+                            'Camera does not support a OpenCV compatible format natively. Abort.')
 
     def draw_image_on_gui(self, frame: Frame):
         resized_photo = self.resize_cv_photo(frame.as_opencv_image(), 20)
