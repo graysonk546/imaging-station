@@ -54,20 +54,28 @@ class CameraWorker(QtCore.QObject):
         # Calibrate camera before starting camera loop
         print("before")
         self.change_camera_settings.emit(CAMERA, self.top_down_exposure_us)
-
+        side_view_exposure = False
+        print("Waiting for camera settings to finish")
+        # Wait 2s for the setup to finish (.emit() is multithreaded)
+        time.sleep(2)
         print("Starting Loop")
         while True:
-            # Change camera settings AFTER taking top-down shot (n=0)
-            if n == 1:
+            # Change camera settings AFTER taking top-down shot
+            if n == 1 and not side_view_exposure:
                 print("sf")
                 self.change_camera_settings.emit(CAMERA, 
                         self.side_view_exposure_us)
-                n += 1
-            if n >= 12:
+                # Error occurred with repeatedly running this fcn
+                # So, we set this flag immediately after
+                side_view_exposure = True
+                # Wait 2s for the setup to finish (.emit() is multithreaded)
+                time.sleep(2)
+            if n >= 10:
                 break
+
             # wait on serial communication
             if s.in_waiting > 0:
-                time.sleep(2)
+                time.sleep(1)
                 # message = "picture\r\n"
                 message = s.readline().decode("ascii")
                 if message == "picture\r\n":
@@ -82,7 +90,6 @@ class CameraWorker(QtCore.QObject):
                                 print("Frame acquisition timed out: " + str(e))
                                 continue
                             print("Got a frame")
-                            time.sleep(1)
                             print("Frame saved to mem")
 
                             # Draw directly
@@ -103,6 +110,7 @@ class CameraWorker(QtCore.QObject):
                 elif message == "finished-imaging\r\n":
                     # exit the control loop
                     break
+
         self.upload.emit(f)
         self.finished.emit()
 
@@ -116,12 +124,13 @@ class My_App(QtWidgets.QMainWindow):
         # Obtaining camera and applying default settings
         with Vimba.get_instance() as vimba:
             cams = vimba.get_all_cameras()
-            if not cams:
-                abort('No Cameras accessible. Abort.')
-            self.cam = cams[0]
-            global CAMERA
-            CAMERA = self.cam
-            self.setup_camera(self.cam)
+            
+        if not cams:
+            raise Exception('No Cameras accessible. Abort.')
+        self.cam = cams[0]
+        global CAMERA
+        CAMERA = self.cam
+        self.setup_camera(self.cam)
 
         self.filename_variables = OrderedDict()
         self.filename_variables['type'] = None
@@ -335,17 +344,28 @@ class My_App(QtWidgets.QMainWindow):
         CURRENT_STAGED_IMAGE_FOLDER = image_directory
         # draw images on the page
         images = [os.path.join(image_directory, x)
-                  for x in os.listdir(image_directory)]
+                  for x in sorted(os.listdir(image_directory))]
         print(images)
         photo_labels = [self.photo1, self.photo2, self.photo3, self.photo4,
                         self.photo5, self.photo6, self.photo7, self.photo8,
-                        self.photo9, self.photo10, self.photo11, self.photo12]
+                        self.photo9]
         for img, label in zip(images, photo_labels):
             image = cv2.imread(img)
-            resized_photo = self.resize_cv_photo(image, 5)
+            resized_photo = self.resize_cv_photo(image, 7)
             pixmap = self.convert_cv_to_pixmap(resized_photo)
             label.setPixmap(pixmap)
+        self.DriveUploadConfirmStack.setCurrentIndex(0)
         self.tabWidget.setCurrentIndex(2)
+
+        # ribbit ribbit ribbit 
+        #               _         _
+        #   __   ___.--'_`.     .'_`--.___   __
+        #  ( _`.'. -   'o` )   ( 'o`   - .`.'_ )
+        #  _\.'_'      _.-'     `-._      `_`./_
+        # ( \`. )    //\`         '/\\    ( .'/ )
+        #  \_`-'`---'\\__,       ,__//`---'`-'_/
+        #   \`        `-\         /-'        '/
+        #    `                               '   
 
     def upload_to_gdrive(self):
         # Split input so the gdrive only has the imaging_test_../ folder,
@@ -356,6 +376,7 @@ class My_App(QtWidgets.QMainWindow):
         print(f"Uploading to Drive. Path: {upload_path}")
         rclone.copy(image_directory, upload_path)
         print(f"Upload complete")
+        self.DriveUploadConfirmStack.setCurrentIndex(1)
 
     def reset_filename_variables(self):
         # Reset variables for the next thread imaging suite
@@ -417,8 +438,8 @@ class My_App(QtWidgets.QMainWindow):
                         cam.set_pixel_format(mono_fmts[0])
 
                     else:
-                        abort(
-                            'Camera does not support a OpenCV compatible format natively. Abort.')
+                        raise Exception(
+                            'Camera does not support a OpenCV compatible format natively.')
 
     def draw_image_on_gui(self, frame: Frame):
         resized_photo = self.resize_cv_photo(frame.as_opencv_image(), 20)
