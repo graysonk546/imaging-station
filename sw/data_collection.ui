@@ -21,7 +21,7 @@
        <bool>true</bool>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="LabelSelection">
        <attribute name="title">
@@ -3998,119 +3998,130 @@
         <string>Results</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_5">
-        <item row="1" column="0">
-         <widget class="QPushButton" name="upload_gdrive_button">
-          <property name="text">
-           <string>Upload to Google Drive</string>
-          </property>
-         </widget>
-        </item>
-        <item row="6" column="0" colspan="2">
+        <item row="5" column="0" colspan="2">
          <layout class="QGridLayout" name="gridLayout">
-          <item row="1" column="3">
-           <widget class="QLabel" name="photo8">
+          <item row="0" column="1">
+           <widget class="QLabel" name="photo2">
             <property name="text">
-             <string>TextLabel</string>
+             <string/>
             </property>
            </widget>
           </item>
           <item row="0" column="0">
            <widget class="QLabel" name="photo1">
             <property name="text">
-             <string>TextLabel</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="1">
-           <widget class="QLabel" name="photo10">
-            <property name="text">
-             <string>TextLabel</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="3">
-           <widget class="QLabel" name="photo4">
-            <property name="text">
-             <string>TextLabel</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="QLabel" name="photo6">
-            <property name="text">
-             <string>TextLabel</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="2">
-           <widget class="QLabel" name="photo11">
-            <property name="text">
-             <string>TextLabel</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0">
-           <widget class="QLabel" name="photo9">
-            <property name="text">
-             <string>TextLabel</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="2">
-           <widget class="QLabel" name="photo7">
-            <property name="text">
-             <string>photo7</string>
+             <string/>
             </property>
            </widget>
           </item>
           <item row="0" column="2">
            <widget class="QLabel" name="photo3">
             <property name="text">
-             <string>TextLabel</string>
+             <string/>
             </property>
            </widget>
           </item>
-          <item row="2" column="3">
-           <widget class="QLabel" name="photo12">
+          <item row="2" column="2">
+           <widget class="QLabel" name="photo9">
             <property name="text">
-             <string>TextLabel</string>
+             <string/>
             </property>
            </widget>
           </item>
-          <item row="0" column="1">
-           <widget class="QLabel" name="photo2">
+          <item row="2" column="1">
+           <widget class="QLabel" name="photo8">
             <property name="text">
-             <string>TextLabel</string>
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="photo7">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2">
+           <widget class="QLabel" name="photo6">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLabel" name="photo5">
+            <property name="text">
+             <string/>
             </property>
            </widget>
           </item>
           <item row="1" column="0">
-           <widget class="QLabel" name="photo5">
+           <widget class="QLabel" name="photo4">
             <property name="text">
-             <string>TextLabel</string>
+             <string/>
             </property>
            </widget>
           </item>
          </layout>
         </item>
         <item row="0" column="0">
-         <widget class="QLabel" name="label_2">
+         <widget class="QStackedWidget" name="DriveUploadConfirmStack">
           <property name="maximumSize">
            <size>
-            <width>570</width>
-            <height>30</height>
+            <width>16777215</width>
+            <height>100</height>
            </size>
           </property>
-          <property name="text">
-           <string>Please review the images before uploading.</string>
+          <property name="currentIndex">
+           <number>0</number>
           </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QPushButton" name="discard_images_button">
-          <property name="text">
-           <string>Discard Images and Redo Session</string>
-          </property>
+          <widget class="QWidget" name="page">
+           <layout class="QGridLayout" name="gridLayout_6">
+            <item row="1" column="0">
+             <widget class="QLabel" name="label_2">
+              <property name="maximumSize">
+               <size>
+                <width>16777212</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>Please review the images before uploading.</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="QPushButton" name="discard_images_button">
+              <property name="text">
+               <string>Discard Images and Redo Session</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QPushButton" name="upload_gdrive_button">
+              <property name="text">
+               <string>Upload to Google Drive</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="page_2">
+           <widget class="QLabel" name="label">
+            <property name="geometry">
+             <rect>
+              <x>100</x>
+              <y>20</y>
+              <width>411</width>
+              <height>51</height>
+             </rect>
+            </property>
+            <property name="text">
+             <string>Upload complete! Please go back to Label Selection</string>
+            </property>
+           </widget>
+          </widget>
          </widget>
         </item>
        </layout>
@@ -4393,7 +4404,7 @@
      <x>0</x>
      <y>0</y>
      <width>1838</width>
-     <height>20</height>
+     <height>27</height>
     </rect>
    </property>
   </widget>
@@ -4402,31 +4413,31 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="WasherStandardGroup"/>
-  <buttongroup name="WasherInnerDiameterMetricGroup"/>
-  <buttongroup name="ScrewHeadGroup"/>
-  <buttongroup name="NutFinishGroup"/>
-  <buttongroup name="ScrewPitchMetricGroup"/>
-  <buttongroup name="WasherHeightMetricGroup"/>
-  <buttongroup name="WasherFinishGroup"/>
-  <buttongroup name="NutStandardGroup"/>
-  <buttongroup name="NutMaterialGroup"/>
-  <buttongroup name="ScrewDirectionGroup"/>
-  <buttongroup name="WasherTypeGroup"/>
-  <buttongroup name="NutDirectionGroup"/>
-  <buttongroup name="FastenerTypeGroup"/>
-  <buttongroup name="ScrewLengthMetricGroup"/>
-  <buttongroup name="NutHeightMetricGroup"/>
-  <buttongroup name="NutWidthMetricGroup"/>
-  <buttongroup name="ScrewStandardGroup"/>
   <buttongroup name="ScrewDriveGroup"/>
   <buttongroup name="NutTypeGroup"/>
+  <buttongroup name="WasherStandardGroup"/>
+  <buttongroup name="ScrewLengthMetricGroup"/>
   <buttongroup name="NutDiameterMetricGroup"/>
-  <buttongroup name="ScrewFinishGroup"/>
-  <buttongroup name="WasherOuterDiameterMetricGroup"/>
-  <buttongroup name="NutPitchMetricGroup"/>
-  <buttongroup name="ScrewMaterialGroup"/>
-  <buttongroup name="ScrewDiameterMetricGroup"/>
+  <buttongroup name="NutFinishGroup"/>
   <buttongroup name="WasherMaterialGroup"/>
+  <buttongroup name="WasherFinishGroup"/>
+  <buttongroup name="ScrewHeadGroup"/>
+  <buttongroup name="NutDirectionGroup"/>
+  <buttongroup name="NutStandardGroup"/>
+  <buttongroup name="ScrewStandardGroup"/>
+  <buttongroup name="ScrewDiameterMetricGroup"/>
+  <buttongroup name="WasherOuterDiameterMetricGroup"/>
+  <buttongroup name="FastenerTypeGroup"/>
+  <buttongroup name="NutMaterialGroup"/>
+  <buttongroup name="ScrewMaterialGroup"/>
+  <buttongroup name="ScrewFinishGroup"/>
+  <buttongroup name="NutHeightMetricGroup"/>
+  <buttongroup name="NutWidthMetricGroup"/>
+  <buttongroup name="WasherInnerDiameterMetricGroup"/>
+  <buttongroup name="ScrewDirectionGroup"/>
+  <buttongroup name="NutPitchMetricGroup"/>
+  <buttongroup name="WasherHeightMetricGroup"/>
+  <buttongroup name="WasherTypeGroup"/>
+  <buttongroup name="ScrewPitchMetricGroup"/>
  </buttongroups>
 </ui>

@@ -26,14 +26,18 @@ CURRENT_STAGED_IMAGE_FOLDER = ""
 
 CAMERA = None
 
+
 class CameraWorker(QtCore.QObject):
     upload = QtCore.pyqtSignal(str)
     finished = QtCore.pyqtSignal()
+    change_camera_settings = QtCore.pyqtSignal(Camera, int)
     progress = QtCore.pyqtSignal(numpy.ndarray)
 
     def __init__(self, filename, model_helper=None, display_helper=None,feed=False):
         super(CameraWorker, self).__init__()
         self.filename = filename
+        self.top_down_exposure_us = 133952  # placeholder value
+        self.side_view_exposure_us = 723824  # placeholder value
         self.model_helper = model_helper
         self.display_helper = display_helper
         self.feed = feed
@@ -86,15 +90,34 @@ class CameraWorker(QtCore.QObject):
             os.mkdir("images")
         os.mkdir(f)
         n = 0
+
+        # Calibrate camera before starting camera loop
+        print("before")
+        self.change_camera_settings.emit(CAMERA, self.top_down_exposure_us)
+        side_view_exposure = False
+        print("Waiting for camera settings to finish")
+        # Wait 2s for the setup to finish (.emit() is multithreaded)
+        time.sleep(2)
         print("Starting Loop")
         while True:
-            if n >= 12:
+            # Change camera settings AFTER taking top-down shot
+            if n == 1 and not side_view_exposure:
+                print("sf")
+                self.change_camera_settings.emit(CAMERA, 
+                        self.side_view_exposure_us)
+                # Error occurred with repeatedly running this fcn
+                # So, we set this flag immediately after
+                side_view_exposure = True
+                # Wait 2s for the setup to finish (.emit() is multithreaded)
+                time.sleep(2)
+            if n >= 10:
                 break
+
             # wait on serial communication
-            if s.in_waiting > 0 or True:
+            if s.in_waiting > 0:
                 time.sleep(1)
-                message = "picture\r\n"
-                # message = s.readline().decode("ascii")
+                # message = "picture\r\n"
+                message = s.readline().decode("ascii")
                 if message == "picture\r\n":
                     print("Obtaining Frame")
                     # requirement that Vimba instance is opened using "with"
@@ -107,7 +130,6 @@ class CameraWorker(QtCore.QObject):
                                 print("Frame acquisition timed out: " + str(e))
                                 continue
                             print("Got a frame")
-                            time.sleep(1)
                             print("Frame saved to mem")
                             
                             frame_cv2 = frame.as_opencv_image()
@@ -116,11 +138,10 @@ class CameraWorker(QtCore.QObject):
                             print("Drawing")
                             self.progress.emit(frame_cv2)
                             print("Done Drawing")
-
-                            final_filename = os.path.join(f, self.filename + date + "_" + str(n) + ".tiff")
+                            final_filename = os.path.join(
+                                f, self.filename + date + "_" + str(n) + ".tiff")
                             print(final_filename)
-                            cv2.imwrite(final_filename,
-                                        frame.as_opencv_image())
+                            cv2.imwrite(final_filename, frame_cv2)
                             n += 1
                             # send a message to indicate a picture was saved
                             s.write(b"finished\n")
@@ -129,8 +150,10 @@ class CameraWorker(QtCore.QObject):
                 elif message == "finished-imaging\r\n":
                     # exit the control loop
                     break
+
         self.upload.emit(f)
         self.finished.emit()
+
 
 class My_App(QtWidgets.QMainWindow):
     def __init__(self):
@@ -140,13 +163,12 @@ class My_App(QtWidgets.QMainWindow):
         # Obtaining camera and applying default settings
         with Vimba.get_instance() as vimba:
             cams = vimba.get_all_cameras()
-            if not cams:
-               raise Exception('No Cameras accessible. Abort.')
-            self.cam = cams[0]
-            global CAMERA
-            CAMERA = self.cam
-            with self.cam as cam:
-                self.setup_camera(cam)
+        if not cams:
+            raise Exception('No Cameras accessible. Abort.')
+        self.cam = cams[0]
+        global CAMERA
+        CAMERA = self.cam
+        self.setup_camera(self.cam)
 
         self.filename_variables = OrderedDict()
         self.filename_variables['type'] = None
@@ -171,11 +193,13 @@ class My_App(QtWidgets.QMainWindow):
         )
         self.start_imaging_button.clicked.connect(
             self.start_imaging_thread)
-                    
+
         # Assign buttons for labeling
         button_group_dict = {}
-        self.FastenerTypeGroup.buttonClicked.connect(self.change_fastener_stack)
-        self.FastenerTypeGroup.buttonClicked.connect(self.reset_filename_variables_when_changing_fastener)
+        self.FastenerTypeGroup.buttonClicked.connect(
+            self.change_fastener_stack)
+        self.FastenerTypeGroup.buttonClicked.connect(
+            self.reset_filename_variables_when_changing_fastener)
         button_group_dict['FastenerTypeGroup'] = self.FastenerTypeGroup
         self.NutDiameterMetricGroup.buttonClicked.connect(self.assign_diameter)
         button_group_dict['NutDiameterMetricGroup'] = self.NutDiameterMetricGroup
@@ -188,7 +212,8 @@ class My_App(QtWidgets.QMainWindow):
         self.NutPitchMetricGroup.buttonClicked.connect(self.assign_pitch)
         button_group_dict['NutPitchMetricGroup'] = self.NutPitchMetricGroup
         self.NutStandardGroup.buttonClicked.connect(self.assign_standard)
-        self.NutStandardGroup.buttonClicked.connect(self.change_nut_standard_stack)
+        self.NutStandardGroup.buttonClicked.connect(
+            self.change_nut_standard_stack)
         button_group_dict['NutStandardGroup'] = self.NutStandardGroup
         self.NutDirectionGroup.buttonClicked.connect(self.assign_direction)
         button_group_dict['NutDirectionGroup'] = self.NutDirectionGroup
@@ -197,7 +222,8 @@ class My_App(QtWidgets.QMainWindow):
         self.NutWidthMetricGroup.buttonClicked.connect(self.assign_width)
         button_group_dict['NutWidthMetricGroup'] = self.NutWidthMetricGroup
 
-        self.ScrewDiameterMetricGroup.buttonClicked.connect(self.assign_diameter)
+        self.ScrewDiameterMetricGroup.buttonClicked.connect(
+            self.assign_diameter)
         button_group_dict['ScrewDiameterMetricGroup'] = self.ScrewDiameterMetricGroup
         self.ScrewDriveGroup.buttonClicked.connect(self.assign_drive)
         button_group_dict['ScrewDriveGroup'] = self.ScrewDriveGroup
@@ -212,21 +238,25 @@ class My_App(QtWidgets.QMainWindow):
         self.ScrewPitchMetricGroup.buttonClicked.connect(self.assign_pitch)
         button_group_dict['ScrewPitchMetricGroup'] = self.ScrewPitchMetricGroup
         self.ScrewStandardGroup.buttonClicked.connect(self.assign_standard)
-        self.ScrewStandardGroup.buttonClicked.connect(self.change_screw_standard_stack)
+        self.ScrewStandardGroup.buttonClicked.connect(
+            self.change_screw_standard_stack)
         button_group_dict['ScrewStandardGroup'] = self.ScrewStandardGroup
         self.ScrewDirectionGroup.buttonClicked.connect(self.assign_direction)
         button_group_dict['ScrewDirectionGroup'] = self.ScrewDirectionGroup
 
         self.WasherFinishGroup.buttonClicked.connect(self.assign_finish)
         button_group_dict['WasherFinishGroup'] = self.WasherFinishGroup
-        self.WasherInnerDiameterMetricGroup.buttonClicked.connect(self.assign_inner_diameter)
+        self.WasherInnerDiameterMetricGroup.buttonClicked.connect(
+            self.assign_inner_diameter)
         button_group_dict['WasherInnerDiameterMetricGroup'] = self.WasherInnerDiameterMetricGroup
         self.WasherMaterialGroup.buttonClicked.connect(self.assign_material)
         button_group_dict['WasherMaterialGroup'] = self.WasherMaterialGroup
-        self.WasherOuterDiameterMetricGroup.buttonClicked.connect(self.assign_outer_diameter)
+        self.WasherOuterDiameterMetricGroup.buttonClicked.connect(
+            self.assign_outer_diameter)
         button_group_dict['WasherOuterDiameterMetricGroup'] = self.WasherOuterDiameterMetricGroup
         self.WasherStandardGroup.buttonClicked.connect(self.assign_standard)
-        self.WasherStandardGroup.buttonClicked.connect(self.change_washer_standard_stack)
+        self.WasherStandardGroup.buttonClicked.connect(
+            self.change_washer_standard_stack)
         button_group_dict['WasherStandardGroup'] = self.WasherStandardGroup
         self.WasherHeightMetricGroup.buttonClicked.connect(self.assign_height)
         button_group_dict['WasherHeightMetricGroup'] = self.WasherHeightMetricGroup
@@ -246,45 +276,45 @@ class My_App(QtWidgets.QMainWindow):
     def assign_height(self,pressed_button):
         self.filename_variables['height'] = pressed_button.text()
 
-    def assign_width(self,pressed_button):
+    def assign_width(self, pressed_button):
         self.filename_variables['width'] = pressed_button.text()
 
-    def assign_drive(self,pressed_button):
+    def assign_drive(self, pressed_button):
         self.filename_variables['drive'] = pressed_button.text()
 
-    def assign_pitch(self,pressed_button):
+    def assign_pitch(self, pressed_button):
         self.filename_variables['pitch'] = pressed_button.text()
-    
-    def change_nut_standard_stack(self,pressed_button):
+
+    def change_nut_standard_stack(self, pressed_button):
         if pressed_button.text() == "Inch":
             self.nut_standard_stack.setCurrentIndex(1)
         elif pressed_button.text() == "Metric":
             self.nut_standard_stack.setCurrentIndex(2)
 
-    def change_screw_standard_stack(self,pressed_button):
+    def change_screw_standard_stack(self, pressed_button):
         if pressed_button.text() == "Inch":
             self.screw_standard_stack.setCurrentIndex(1)
         elif pressed_button.text() == "Metric":
             self.screw_standard_stack.setCurrentIndex(2)
 
-    def assign_direction(self,pressed_button):
+    def assign_direction(self, pressed_button):
         self.filename_variables['direction'] = pressed_button.text()
 
-    def assign_finish(self,pressed_button):
+    def assign_finish(self, pressed_button):
         self.filename_variables['finish'] = pressed_button.text()
 
-    def assign_inner_diameter(self,pressed_button):
+    def assign_inner_diameter(self, pressed_button):
         self.filename_variables['inner_diameter'] = pressed_button.text()
 
-    def assign_material(self,pressed_button):
+    def assign_material(self, pressed_button):
         self.filename_variables['material'] = pressed_button.text()
 
-    def assign_outer_diameter(self,pressed_button):
+    def assign_outer_diameter(self, pressed_button):
         self.filename_variables['outer_diameter'] = pressed_button.text()
 
     def assign_standard(self, pressed_button):
         self.filename_variables['standard'] = pressed_button.text()
-        
+
     def change_washer_standard_stack(self, pressed_button):
         if pressed_button.text() == "Inch":
             self.washer_standard_stack.setCurrentIndex(1)
@@ -344,6 +374,7 @@ class My_App(QtWidgets.QMainWindow):
         # Connect signals/slots
         self.camera_thread.started.connect(self.worker.run)
         self.worker.progress.connect(self.draw_image_on_gui)
+        self.worker.change_camera_settings.connect(self.setup_camera)
         self.worker.upload.connect(self.ask_user_for_upload_decision)
         self.worker.finished.connect(self.camera_thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
@@ -362,17 +393,29 @@ class My_App(QtWidgets.QMainWindow):
         global CURRENT_STAGED_IMAGE_FOLDER
         CURRENT_STAGED_IMAGE_FOLDER = image_directory
         # draw images on the page
-        images = [os.path.join(image_directory, x) for x in os.listdir(image_directory)]
+        images = [os.path.join(image_directory, x)
+                  for x in sorted(os.listdir(image_directory))]
         print(images)
         photo_labels = [self.photo1, self.photo2, self.photo3, self.photo4,
                         self.photo5, self.photo6, self.photo7, self.photo8,
-                        self.photo9, self.photo10, self.photo11, self.photo12]
+                        self.photo9]
         for img, label in zip(images, photo_labels):
             image = cv2.imread(img)
-            resized_photo = self.resize_cv_photo(image, 5)
-            pixmap = self.convert_cv_to_pixmap(resized_photo)            
+            resized_photo = self.resize_cv_photo(image, 7)
+            pixmap = self.convert_cv_to_pixmap(resized_photo)
             label.setPixmap(pixmap)
+        self.DriveUploadConfirmStack.setCurrentIndex(0)
         self.tabWidget.setCurrentIndex(2)
+
+        # ribbit ribbit ribbit 
+        #               _         _
+        #   __   ___.--'_`.     .'_`--.___   __
+        #  ( _`.'. -   'o` )   ( 'o`   - .`.'_ )
+        #  _\.'_'      _.-'     `-._      `_`./_
+        # ( \`. )    //\`         '/\\    ( .'/ )
+        #  \_`-'`---'\\__,       ,__//`---'`-'_/
+        #   \`        `-\         /-'        '/
+        #    `                               '   
 
     def upload_to_gdrive(self):
         # Split input so the gdrive only has the imaging_test_../ folder,
@@ -383,6 +426,7 @@ class My_App(QtWidgets.QMainWindow):
         print(f"Uploading to Drive. Path: {upload_path}")
         rclone.copy(image_directory, upload_path)
         print(f"Upload complete")
+        self.DriveUploadConfirmStack.setCurrentIndex(1)
 
     def reset_filename_variables(self):
         # Reset variables for the next thread imaging suite
@@ -392,51 +436,60 @@ class My_App(QtWidgets.QMainWindow):
         # Unclick all buttons? No need?
         return
 
-    def setup_camera(self, cam: Camera):
-        with cam:
-            # Enable auto exposure time setting if camera supports it
-            try:
-                cam.ExposureAuto.set('Continuous')
+    def setup_camera(self, cam: Camera, exposure_us=None):
+        print("setup")
+        with Vimba.get_instance() as vimba:
+            with cam:
+                # Enable auto exposure time setting if camera supports it
+                try:
+                    print("exposure")
+                    # If exposure_us is set, manually change exposure value
+                    if isinstance(exposure_us, int):
+                        cam.ExposureAuto.set('Off')
+                        cam.ExposureTime.set(exposure_us)
+                    else:
+                        cam.ExposureAuto.set('Continuous')
 
-            except (AttributeError, VimbaFeatureError):
-                pass
-
-            # Enable white balancing if camera supports it
-            try:
-                cam.BalanceWhiteAuto.set('Continuous')
-
-            except (AttributeError, VimbaFeatureError):
-                pass
-
-            # Try to adjust GeV packet size. This Feature is only available for GigE - Cameras.
-            try:
-                cam.GVSPAdjustPacketSize.run()
-
-                while not cam.GVSPAdjustPacketSize.is_done():
+                except (AttributeError, VimbaFeatureError) as e:
+                    print("error:" + str(e))
                     pass
 
-            except (AttributeError, VimbaFeatureError):
-                pass
+                # Enable white balancing if camera supports it
+                try:
+                    cam.BalanceWhiteAuto.set('Continuous')
 
-            # Query available, open_cv compatible pixel formats
-            # prefer color formats over monochrome formats
-            cv_fmts = intersect_pixel_formats(
-                cam.get_pixel_formats(), OPENCV_PIXEL_FORMATS)
-            color_fmts = intersect_pixel_formats(cv_fmts, COLOR_PIXEL_FORMATS)
+                except (AttributeError, VimbaFeatureError):
+                    pass
 
-            if color_fmts:
-                cam.set_pixel_format(color_fmts[0])
+                # Try to adjust GeV packet size. This Feature is only available for GigE - Cameras.
+                try:
+                    cam.GVSPAdjustPacketSize.run()
 
-            else:
-                mono_fmts = intersect_pixel_formats(
-                    cv_fmts, MONO_PIXEL_FORMATS)
+                    while not cam.GVSPAdjustPacketSize.is_done():
+                        pass
 
-                if mono_fmts:
-                    cam.set_pixel_format(mono_fmts[0])
+                except (AttributeError, VimbaFeatureError):
+                    pass
+
+                # Query available, open_cv compatible pixel formats
+                # prefer color formats over monochrome formats
+                cv_fmts = intersect_pixel_formats(
+                    cam.get_pixel_formats(), OPENCV_PIXEL_FORMATS)
+                color_fmts = intersect_pixel_formats(cv_fmts, COLOR_PIXEL_FORMATS)
+
+                if color_fmts:
+                    cam.set_pixel_format(color_fmts[0])
 
                 else:
-                    abort(
-                        'Camera does not support a OpenCV compatible format natively. Abort.')        
+                    mono_fmts = intersect_pixel_formats(
+                        cv_fmts, MONO_PIXEL_FORMATS)
+
+                    if mono_fmts:
+                        cam.set_pixel_format(mono_fmts[0])
+
+                    else:
+                        raise Exception(
+                            'Camera does not support a OpenCV compatible format natively.')
 
     def draw_image_on_gui(self, frame):
         resized_photo = self.resize_cv_photo(frame, 20)
