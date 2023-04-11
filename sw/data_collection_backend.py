@@ -30,14 +30,20 @@ CAMERA = None
 class CameraWorker(QtCore.QObject):
     upload = QtCore.pyqtSignal(str)
     finished = QtCore.pyqtSignal()
-    change_camera_settings = QtCore.pyqtSignal(Camera, int)
+    change_camera_settings = QtCore.pyqtSignal(Camera, int, float, float)
     progress = QtCore.pyqtSignal(numpy.ndarray)
 
     def __init__(self, filename, model_helper=None, display_helper=None,feed=False):
         super(CameraWorker, self).__init__()
         self.filename = filename
-        self.top_down_exposure_us = 133952  # placeholder value
-        self.side_view_exposure_us = 723824  # placeholder value
+        # Camera config
+        self.top_down_exposure_us = 133952
+        self.top_down_balance_red = 2.88
+        self.top_down_balance_blue = 1.9
+        self.side_view_exposure_us = 723824
+        self.side_view_balance_red= 2.52
+        self.side_view_balance_blue = 1.45
+
         self.model_helper = model_helper
         self.display_helper = display_helper
         self.feed = feed
@@ -61,7 +67,7 @@ class CameraWorker(QtCore.QObject):
 
         # Calibrate camera before starting camera loop
         print("before")
-        self.change_camera_settings.emit(CAMERA, self.top_down_exposure_us)
+        self.change_camera_settings.emit(CAMERA, self.top_down_exposure_us, self.top_down_balance_red, self.top_down_balance_blue)
         side_view_exposure = False
         print("Waiting for camera settings to finish")
         # Wait 2s for the setup to finish (.emit() is multithreaded)
@@ -73,7 +79,7 @@ class CameraWorker(QtCore.QObject):
                 print("sf")
                 time.sleep(2)
                 self.change_camera_settings.emit(CAMERA, 
-                        self.side_view_exposure_us)
+                        self.side_view_exposure_us, self.side_view_balance_red, self.side_view_balance_blue)
                 # Error occurred with repeatedly running this fcn
                 # So, we set this flag immediately after
                 side_view_exposure = True
@@ -414,7 +420,7 @@ class My_App(QtWidgets.QMainWindow):
         # Unclick all buttons? No need?
         return
 
-    def setup_camera(self, cam: Camera, exposure_us=None):
+    def setup_camera(self, cam: Camera, exposure_us=None, balance_red=None, balance_blue=None):
         print("setup")
         with Vimba.get_instance() as vimba:
             with cam:
@@ -434,7 +440,18 @@ class My_App(QtWidgets.QMainWindow):
 
                 # Enable white balancing if camera supports it
                 try:
-                    cam.BalanceWhiteAuto.set('Continuous')
+                    print("balance")
+                    # If balance is set, manually change white balance value
+                    if isinstance(balance_red, float):
+                        cam.BalanceWhiteAuto.set('Off')
+                        cam.BalanceRatioSelector.set('Red')
+                        cam.BalanceRatio.set(balance_red)
+                    if isinstance(balance_blue, float):
+                        cam.BalanceWhiteAuto.set('Off')
+                        cam.BalanceRatioSelector.set('Blue')
+                        cam.BalanceRatio.set(balance_blue)
+                    else:
+                        cam.BalanceWhiteAuto.set('Continuous')
 
                 except (AttributeError, VimbaFeatureError):
                     pass
