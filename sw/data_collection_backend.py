@@ -408,7 +408,11 @@ class My_App(QtWidgets.QMainWindow):
         lowest_level_folder = os.path.split(image_directory)[-1]
         upload_path = os.path.join(REMOTE_IMAGE_FOLDER, lowest_level_folder)
         print(f"Uploading to Drive. Path: {upload_path}")
-        rclone.copy(image_directory, upload_path)
+        try:
+            rclone.copy(image_directory, upload_path)
+        except Exception as e:
+            print("You probably need to refresh the token with rclone config.")
+            print(str(e))
         print(f"Upload complete")
         self.DriveUploadConfirmStack.setCurrentIndex(1)
 
