@@ -42,41 +42,9 @@ class CameraWorker(QtCore.QObject):
         self.display_helper = display_helper
         self.feed = feed
 
-    def feed_loop(self):
-        timer = 0 
-        while timer < 3:
-            with Vimba.get_instance() as vimba:
-                with CAMERA as cam:
-                    # set frame capture timeout at max exposure time
-                    try:
-                        frame = cam.get_frame(timeout_ms=1000000)
-                    except VimbaTimeout as e:
-                        print("Frame acquisition timed out: " + str(e))
-                        continue
-                    print("Got a frame")
-                    time.sleep(1)
-                    print("Frame saved to mem")
-                    
-                    print("Starting inference")
-                    frame_cv2 = frame.as_opencv_image()
-                    frame_cv2 = self.display_helper.crop_scale(frame_cv2, scale=0.7)
-                    prediction = self.model_helper.predict_single_image(frame_cv2)
-
-                    # Draw directly
-                    print("Drawing")
-                    frame_cv2 = self.display_helper.draw_prediction(frame_cv2, prediction, self.model_helper.mapping)
-                    self.progress.emit(frame_cv2)
-                    print("Done Drawing")
-                    timer += 1
-
     def run(self):
         # establish serial communication with Bluepill
         s = serial.Serial("/dev/ttyUSB0", 115200)
-
-        if self.feed:
-            self.feed_loop()
-            self.finished.emit()
-            return
 
         # commence the imaging session with the "start" command
         time.sleep(1)
@@ -103,6 +71,7 @@ class CameraWorker(QtCore.QObject):
             # Change camera settings AFTER taking top-down shot
             if n == 1 and not side_view_exposure:
                 print("sf")
+                time.sleep(2)
                 self.change_camera_settings.emit(CAMERA, 
                         self.side_view_exposure_us)
                 # Error occurred with repeatedly running this fcn
@@ -133,6 +102,13 @@ class CameraWorker(QtCore.QObject):
                             print("Frame saved to mem")
                             
                             frame_cv2 = frame.as_opencv_image()
+
+                            if self.feed and n == 0:
+                                print("Starting inference...")
+                                frame_cv2 = self.display_helper.crop_scale(frame_cv2, scale=0.7)
+                                prediction = self.model_helper.predict_single_image(frame_cv2)
+
+                                frame_cv2 = self.display_helper.draw_prediction(frame_cv2, prediction, self.model_helper.mapping)
 
                             # Draw directly
                             print("Drawing")
