@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1838</width>
-    <height>914</height>
+    <height>864</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -3945,10 +3945,36 @@
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="start_imaging_button">
-          <property name="text">
-           <string>Begin Imaging Process</string>
+         <widget class="QGroupBox" name="groupBox">
+          <property name="title">
+           <string>GroupBox</string>
           </property>
+          <widget class="QPushButton" name="start_imaging_button">
+           <property name="geometry">
+            <rect>
+             <x>577</x>
+             <y>0</y>
+             <width>1221</width>
+             <height>31</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>Begin Imaging Process</string>
+           </property>
+          </widget>
+          <widget class="QPushButton" name="activate_camera_feed">
+           <property name="geometry">
+            <rect>
+             <x>-1</x>
+             <y>0</y>
+             <width>561</width>
+             <height>31</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>Camera Feed</string>
+           </property>
+          </widget>
          </widget>
         </item>
        </layout>
