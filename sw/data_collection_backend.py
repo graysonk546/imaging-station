@@ -102,6 +102,8 @@ class CameraWorker(QtCore.QObject):
                             print("Frame saved to mem")
                             
                             frame_cv2 = frame.as_opencv_image()
+                            # flip image on both axes (i.e. rotate 180 deg)
+                            frame_cv2 = cv2.flip(frame_cv2, -1)
 
                             if self.feed and n == 0:
                                 print("Starting inference...")
