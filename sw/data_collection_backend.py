@@ -89,7 +89,8 @@ class CameraWorker(QtCore.QObject):
                 break
 
             # wait on serial communication
-            if s.in_waiting > 0:
+            if True:
+            # if s.in_waiting > 0:
                 time.sleep(1)
                 message = "picture\r\n"
                 # message = s.readline().decode("ascii")
@@ -415,8 +416,17 @@ class My_App(QtWidgets.QMainWindow):
         lowest_level_folder = os.path.split(image_directory)[-1]
         upload_path = os.path.join(REMOTE_IMAGE_FOLDER, lowest_level_folder)
         print(f"Uploading to Drive. Path: {upload_path}")
+        print(f"On-device path: {image_directory}")
         try:
             rclone.copy(image_directory, upload_path)
+        except UnicodeDecodeError as uni_e:
+            print(str(uni_e))
+            print("Error. Wait a few seconds and click 'Upload to Google Drive' again. Consult code for Kenneth commentary.")
+            print("If upload continues to fail after multiple retries, try typing this into your command line:")
+            print(f"rclone copy {image_directory} {upload_path}")
+            return
+            # Kenneth commentary: I think it's something to do with the image data not getting flushed to the file, so the copy() function finds files that are empty.
+            # I find that it always works after I retry a few times, so it's not a high-prio bug.
         except Exception as e:
             print(str(e))
             print("You probably need to refresh the token with rclone config. Consult the README for a guide on how to do so.")

@@ -1,6 +1,16 @@
 # imaging-station
 Codebase for a fastener imaging station.
 
+# How to run the UI
+Go to this directory
+```
+cd sw
+```
+Run the UI python script
+```
+./data_collection_backend.py
+```
+
 
 # How to refresh the rclone token
 We use rclone to copy our imaging tests to google drive.
