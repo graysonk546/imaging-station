@@ -91,8 +91,8 @@ class CameraWorker(QtCore.QObject):
             # wait on serial communication
             if s.in_waiting > 0:
                 time.sleep(1)
-                # message = "picture\r\n"
-                message = s.readline().decode("ascii")
+                message = "picture\r\n"
+                # message = s.readline().decode("ascii")
                 if message == "picture\r\n":
                     print("Obtaining Frame")
                     # requirement that Vimba instance is opened using "with"
@@ -110,13 +110,6 @@ class CameraWorker(QtCore.QObject):
                             frame_cv2 = frame.as_opencv_image()
                             # flip image on both axes (i.e. rotate 180 deg)
                             frame_cv2 = cv2.flip(frame_cv2, -1)
-
-                            if self.feed and n == 0:
-                                print("Starting inference...")
-                                frame_cv2 = self.display_helper.crop_scale(frame_cv2, scale=0.7)
-                                prediction = self.model_helper.predict_single_image(frame_cv2)
-
-                                frame_cv2 = self.display_helper.draw_prediction(frame_cv2, prediction, self.model_helper.mapping)
 
                             # Draw directly
                             print("Drawing")
@@ -349,6 +342,8 @@ class My_App(QtWidgets.QMainWindow):
         self.start_imaging_thread(feed=True)
     
     def start_imaging_thread(self, feed=False):
+        self.feed = feed
+        print(f"{feed=}")
         self.camera_thread = QtCore.QThread()
         self.worker = CameraWorker(self.fastener_filename.text(),
                                    model_helper = self.model_helper,
@@ -388,6 +383,18 @@ class My_App(QtWidgets.QMainWindow):
             resized_photo = self.resize_cv_photo(image, 7)
             pixmap = self.convert_cv_to_pixmap(resized_photo)
             label.setPixmap(pixmap)
+
+        if self.feed:
+            image = cv2.imread(images[0])
+            print("Starting inference...")
+            frame_cv2 = self.display_helper.crop_scale(image, scale=0.7)
+            prediction = self.model_helper.predict_single_image(frame_cv2, score_threshold=0.5)
+
+            frame_cv2 = self.display_helper.draw_prediction(frame_cv2, prediction, self.model_helper.mapping)
+            resized_photo = self.resize_cv_photo(frame_cv2, 20)
+            pixmap = self.convert_cv_to_pixmap(resized_photo)
+            self.camera_feed.setPixmap(pixmap)
+
         self.DriveUploadConfirmStack.setCurrentIndex(0)
         self.tabWidget.setCurrentIndex(2)
 
@@ -411,8 +418,9 @@ class My_App(QtWidgets.QMainWindow):
         try:
             rclone.copy(image_directory, upload_path)
         except Exception as e:
-            print("You probably need to refresh the token with rclone config.")
             print(str(e))
+            print("You probably need to refresh the token with rclone config. Consult the README for a guide on how to do so.")
+            return
         print(f"Upload complete")
         self.DriveUploadConfirmStack.setCurrentIndex(1)
 
