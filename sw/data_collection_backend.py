@@ -9,16 +9,16 @@ import threading
 import time
 import serial
 
-from vimba import *
+# from vimba import *
 import os
 from datetime import datetime
 from collections import OrderedDict
 from rclone_python import rclone
 
 import numpy
-import torch
-import torchvision.transforms.transforms as T
-from utils import ModelHelper, DisplayHelper
+# import torch
+# import torchvision.transforms.transforms as T
+# from utils import ModelHelper, DisplayHelper
 
 FOLDER_NAME = "images/imaging_test_{date}"
 REMOTE_IMAGE_FOLDER = "gdrive:2306\ Screw\ Sorter/Data/real_image_sets/"
@@ -30,7 +30,7 @@ CAMERA = None
 class CameraWorker(QtCore.QObject):
     upload = QtCore.pyqtSignal(str)
     finished = QtCore.pyqtSignal()
-    change_camera_settings = QtCore.pyqtSignal(Camera, int, float, float)
+    # change_camera_settings = QtCore.pyqtSignal(Camera, int, float, float)
     progress = QtCore.pyqtSignal(numpy.ndarray)
 
     def __init__(self, filename, model_helper=None, display_helper=None,feed=False):
@@ -67,7 +67,7 @@ class CameraWorker(QtCore.QObject):
 
         # Calibrate camera before starting camera loop
         print("before")
-        self.change_camera_settings.emit(CAMERA, self.top_down_exposure_us, self.top_down_balance_red, self.top_down_balance_blue)
+        # self.change_camera_settings.emit(CAMERA, self.top_down_exposure_us, self.top_down_balance_red, self.top_down_balance_blue)
         side_view_exposure = False
         print("Waiting for camera settings to finish")
         # Wait 2s for the setup to finish (.emit() is multithreaded)
@@ -78,8 +78,8 @@ class CameraWorker(QtCore.QObject):
             if n == 1 and not side_view_exposure:
                 print("sf")
                 time.sleep(2)
-                self.change_camera_settings.emit(CAMERA, 
-                        self.side_view_exposure_us, self.side_view_balance_red, self.side_view_balance_blue)
+                # self.change_camera_settings.emit(CAMERA, 
+                #         self.side_view_exposure_us, self.side_view_balance_red, self.side_view_balance_blue)
                 # Error occurred with repeatedly running this fcn
                 # So, we set this flag immediately after
                 side_view_exposure = True
@@ -97,33 +97,33 @@ class CameraWorker(QtCore.QObject):
                 if message == "picture\r\n":
                     print("Obtaining Frame")
                     # requirement that Vimba instance is opened using "with"
-                    with Vimba.get_instance() as vimba:
-                        with CAMERA as cam:
-                            # set frame capture timeout at max exposure time
-                            try:
-                                frame = cam.get_frame(timeout_ms=1000000)
-                            except VimbaTimeout as e:
-                                print("Frame acquisition timed out: " + str(e))
-                                continue
-                            print("Got a frame")
-                            print("Frame saved to mem")
+                    # with Vimba.get_instance() as vimba:
+                    #     with CAMERA as cam:
+                    #         # set frame capture timeout at max exposure time
+                    #         try:
+                    #             frame = cam.get_frame(timeout_ms=1000000)
+                    #         except VimbaTimeout as e:
+                    #             print("Frame acquisition timed out: " + str(e))
+                    #             continue
+                    #         print("Got a frame")
+                    #         print("Frame saved to mem")
                             
-                            frame_cv2 = frame.as_opencv_image()
-                            # flip image on both axes (i.e. rotate 180 deg)
-                            frame_cv2 = cv2.flip(frame_cv2, -1)
+                    #         frame_cv2 = frame.as_opencv_image()
+                    #         # flip image on both axes (i.e. rotate 180 deg)
+                    #         frame_cv2 = cv2.flip(frame_cv2, -1)
 
-                            # Draw directly
-                            print("Drawing")
-                            self.progress.emit(frame_cv2)
-                            print("Done Drawing")
-                            final_filename = os.path.join(
-                                f, self.filename + date + "_" + str(n) + ".tiff")
-                            print(final_filename)
-                            cv2.imwrite(final_filename, frame_cv2)
-                            n += 1
-                            # send a message to indicate a picture was saved
-                            s.write(b"finished\n")
-                            s.flush()
+                    #         # Draw directly
+                    #         print("Drawing")
+                    #         self.progress.emit(frame_cv2)
+                    #         print("Done Drawing")
+                    #         final_filename = os.path.join(
+                    #             f, self.filename + date + "_" + str(n) + ".tiff")
+                    #         print(final_filename)
+                    #         cv2.imwrite(final_filename, frame_cv2)
+                    #         n += 1
+                    #         # send a message to indicate a picture was saved
+                    #         s.write(b"finished\n")
+                    #         s.flush()
 
                 elif message == "finished-imaging\r\n":
                     # exit the control loop
@@ -139,15 +139,16 @@ class My_App(QtWidgets.QMainWindow):
         loadUi("./data_collection.ui", self)
 
         # Obtaining camera and applying default settings
-        with Vimba.get_instance() as vimba:
-            cams = vimba.get_all_cameras()
-        if not cams:
-            raise Exception('No Cameras accessible. Abort.')
-        self.cam = cams[0]
-        global CAMERA
-        CAMERA = self.cam
-        self.setup_camera(self.cam)
+        # with Vimba.get_instance() as vimba:
+        #     cams = vimba.get_all_cameras()
+        # if not cams:
+        #     raise Exception('No Cameras accessible. Abort.')
+        # self.cam = cams[0]
+        # global CAMERA
+        # CAMERA = self.cam
+        # self.setup_camera(self.cam)
 
+        # The order of fields put in here determines the order in the filename.
         self.filename_variables = OrderedDict()
         self.filename_variables['type'] = None
         self.filename_variables['standard'] = None
@@ -173,131 +174,159 @@ class My_App(QtWidgets.QMainWindow):
             self.start_imaging_thread)
 
         # Assign buttons for labeling
-        button_group_dict = {}
         self.FastenerTypeGroup.buttonClicked.connect(
             self.change_fastener_stack)
         self.FastenerTypeGroup.buttonClicked.connect(
             self.reset_filename_variables_when_changing_fastener)
-        button_group_dict['FastenerTypeGroup'] = self.FastenerTypeGroup
         self.NutDiameterMetricGroup.buttonClicked.connect(self.assign_diameter)
-        button_group_dict['NutDiameterMetricGroup'] = self.NutDiameterMetricGroup
+        self.NutDiameterImperialGroup.buttonClicked.connect(self.assign_diameter)
         self.NutFinishGroup.buttonClicked.connect(self.assign_finish)
-        button_group_dict['NutFinishGroup'] = self.NutFinishGroup
-        self.NutHeightMetricGroup.buttonClicked.connect(self.assign_height)
-        button_group_dict['NutHeightMetricGroup'] = self.NutHeightMetricGroup
         self.NutMaterialGroup.buttonClicked.connect(self.assign_material)
-        button_group_dict['NutMaterialGroup'] = self.NutMaterialGroup
         self.NutPitchMetricGroup.buttonClicked.connect(self.assign_pitch)
-        button_group_dict['NutPitchMetricGroup'] = self.NutPitchMetricGroup
-        self.NutStandardGroup.buttonClicked.connect(self.assign_standard)
+        self.NutPitchImperialGroup.buttonClicked.connect(self.assign_pitch)
         self.NutStandardGroup.buttonClicked.connect(
             self.change_nut_standard_stack)
-        button_group_dict['NutStandardGroup'] = self.NutStandardGroup
         self.NutDirectionGroup.buttonClicked.connect(self.assign_direction)
-        button_group_dict['NutDirectionGroup'] = self.NutDirectionGroup
         self.NutTypeGroup.buttonClicked.connect(self.assign_subtype)
-        button_group_dict['NutTypeGroup'] = self.NutTypeGroup
-        self.NutWidthMetricGroup.buttonClicked.connect(self.assign_width)
-        button_group_dict['NutWidthMetricGroup'] = self.NutWidthMetricGroup
+        self.nut_height_metric_double.textChanged.connect(self.assign_height)
+        self.nut_width_metric_double.textChanged.connect(self.assign_width)
+        self.nut_width_imperial_double.textChanged.connect(self.assign_width)
+        self.nut_width_imperial_double.textChanged.connect(self.assign_width)
+
 
         self.ScrewDiameterMetricGroup.buttonClicked.connect(
             self.assign_diameter)
-        button_group_dict['ScrewDiameterMetricGroup'] = self.ScrewDiameterMetricGroup
+        self.ScrewDiameterImperialGroup.buttonClicked.connect(
+            self.assign_diameter)
         self.ScrewDriveGroup.buttonClicked.connect(self.assign_drive)
-        button_group_dict['ScrewDriveGroup'] = self.ScrewDriveGroup
         self.ScrewFinishGroup.buttonClicked.connect(self.assign_finish)
-        button_group_dict['ScrewFinishGroup'] = self.ScrewFinishGroup
         self.ScrewHeadGroup.buttonClicked.connect(self.assign_head)
-        button_group_dict['ScrewHeadGroup'] = self.ScrewHeadGroup
         self.ScrewLengthMetricGroup.buttonClicked.connect(self.assign_length)
-        button_group_dict['ScrewLengthMetricGroup'] = self.ScrewLengthMetricGroup
+        self.ScrewLengthImperialGroup.buttonClicked.connect(self.assign_length)
         self.ScrewMaterialGroup.buttonClicked.connect(self.assign_material)
-        button_group_dict['ScrewMaterialGroup'] = self.ScrewMaterialGroup
         self.ScrewPitchMetricGroup.buttonClicked.connect(self.assign_pitch)
-        button_group_dict['ScrewPitchMetricGroup'] = self.ScrewPitchMetricGroup
-        self.ScrewStandardGroup.buttonClicked.connect(self.assign_standard)
+        self.ScrewPitchImperialGroup.buttonClicked.connect(self.assign_pitch)
         self.ScrewStandardGroup.buttonClicked.connect(
             self.change_screw_standard_stack)
-        button_group_dict['ScrewStandardGroup'] = self.ScrewStandardGroup
         self.ScrewDirectionGroup.buttonClicked.connect(self.assign_direction)
-        button_group_dict['ScrewDirectionGroup'] = self.ScrewDirectionGroup
 
         self.WasherFinishGroup.buttonClicked.connect(self.assign_finish)
-        button_group_dict['WasherFinishGroup'] = self.WasherFinishGroup
-        self.WasherInnerDiameterMetricGroup.buttonClicked.connect(
-            self.assign_inner_diameter)
-        button_group_dict['WasherInnerDiameterMetricGroup'] = self.WasherInnerDiameterMetricGroup
+        self.washer_inner_diameter_metric_double.textChanged.connect(self.assign_inner_diameter)
+        self.washer_inner_diameter_imperial_double.textChanged.connect(self.assign_inner_diameter)
         self.WasherMaterialGroup.buttonClicked.connect(self.assign_material)
-        button_group_dict['WasherMaterialGroup'] = self.WasherMaterialGroup
-        self.WasherOuterDiameterMetricGroup.buttonClicked.connect(
-            self.assign_outer_diameter)
-        button_group_dict['WasherOuterDiameterMetricGroup'] = self.WasherOuterDiameterMetricGroup
-        self.WasherStandardGroup.buttonClicked.connect(self.assign_standard)
+        self.washer_outer_diameter_metric_double.textChanged.connect(self.assign_outer_diameter)
+        self.washer_outer_diameter_imperial_double.textChanged.connect(self.assign_outer_diameter)
         self.WasherStandardGroup.buttonClicked.connect(
             self.change_washer_standard_stack)
-        button_group_dict['WasherStandardGroup'] = self.WasherStandardGroup
-        self.WasherHeightMetricGroup.buttonClicked.connect(self.assign_height)
-        button_group_dict['WasherHeightMetricGroup'] = self.WasherHeightMetricGroup
+        self.washer_height_metric_double.textChanged.connect(self.assign_height)
+        self.washer_height_imperial_double.textChanged.connect(self.assign_height)
         self.WasherTypeGroup.buttonClicked.connect(self.assign_subtype)
-        button_group_dict['WasherTypeGroup'] = self.WasherTypeGroup
-
-        # Mass-connecting all buttons groups to one function
-        for group_name, button_group in button_group_dict.items():
-            button_group.buttonClicked.connect(self.update_fastener_filename)
 
         self.upload_gdrive_button.clicked.connect(self.upload_to_gdrive)
         self.discard_images_button.clicked.connect(self.redo_imaging)
 
-        self.model_helper = ModelHelper("./model_v1_m2vsm3.pt")
-        self.display_helper = DisplayHelper()
+        # self.model_helper = ModelHelper("./model_v1_m2vsm3.pt")
+        # self.display_helper = DisplayHelper()
 
-    def assign_height(self,pressed_button):
-        self.filename_variables['height'] = pressed_button.text()
+    def assign_height(self, height_text):
+        self.filename_variables['height'] = height_text
+        self.update_fastener_filename()
 
-    def assign_width(self, pressed_button):
-        self.filename_variables['width'] = pressed_button.text()
+    def assign_width(self, width_text):
+        self.filename_variables['width'] = width_text
+        self.update_fastener_filename()
 
     def assign_drive(self, pressed_button):
         self.filename_variables['drive'] = pressed_button.text()
+        self.update_fastener_filename()
 
     def assign_pitch(self, pressed_button):
         self.filename_variables['pitch'] = pressed_button.text()
+        self.update_fastener_filename()
 
     def change_nut_standard_stack(self, pressed_button):
+        # Update GUI appearance
+        changed_index = False
         if pressed_button.text() == "Inch":
-            self.nut_standard_stack.setCurrentIndex(1)
+            if self.nut_standard_stack.currentIndex() != 1:
+                self.nut_standard_stack.setCurrentIndex(1)
+                changed_index = True
         elif pressed_button.text() == "Metric":
-            self.nut_standard_stack.setCurrentIndex(2)
+            if self.nut_standard_stack.currentIndex() != 2:
+                self.nut_standard_stack.setCurrentIndex(2)
+                changed_index = True
+
+        self.filename_variables['standard'] = pressed_button.text()
+       # Clear data fields of stack
+        if changed_index:
+            self.filename_variables['width'] = None
+            self.filename_variables['height'] = None
+            self.filename_variables['diameter'] = None
+            self.filename_variables['pitch'] = None
+
+        self.update_fastener_filename()
 
     def change_screw_standard_stack(self, pressed_button):
+        # Update GUI appearance
+        changed_index = False
         if pressed_button.text() == "Inch":
-            self.screw_standard_stack.setCurrentIndex(1)
+            if self.screw_standard_stack.currentIndex() != 1:
+                self.screw_standard_stack.setCurrentIndex(1)
+                changed_index = True
         elif pressed_button.text() == "Metric":
-            self.screw_standard_stack.setCurrentIndex(2)
+            if self.screw_standard_stack.currentIndex() != 2:
+                self.screw_standard_stack.setCurrentIndex(2)
+                changed_index = True
+        
+        self.filename_variables['standard'] = pressed_button.text()
+        # Clear data fields of stack
+        if changed_index:
+            self.filename_variables['length'] = None
+            self.filename_variables['diameter'] = None
+            self.filename_variables['pitch'] = None
+
+        self.update_fastener_filename()
 
     def assign_direction(self, pressed_button):
         self.filename_variables['direction'] = pressed_button.text()
+        self.update_fastener_filename()
 
     def assign_finish(self, pressed_button):
         self.filename_variables['finish'] = pressed_button.text()
+        self.update_fastener_filename()
 
-    def assign_inner_diameter(self, pressed_button):
-        self.filename_variables['inner_diameter'] = pressed_button.text()
+    def assign_inner_diameter(self, inner_diameter_text):
+        self.filename_variables['inner_diameter'] = inner_diameter_text
+        self.update_fastener_filename()
 
     def assign_material(self, pressed_button):
         self.filename_variables['material'] = pressed_button.text()
+        self.update_fastener_filename()
 
-    def assign_outer_diameter(self, pressed_button):
-        self.filename_variables['outer_diameter'] = pressed_button.text()
-
-    def assign_standard(self, pressed_button):
-        self.filename_variables['standard'] = pressed_button.text()
+    def assign_outer_diameter(self, outer_diameter_text):
+        self.filename_variables['outer_diameter'] = outer_diameter_text
+        self.update_fastener_filename()
 
     def change_washer_standard_stack(self, pressed_button):
+        # Update GUI appearance
+        changed_index = False
         if pressed_button.text() == "Inch":
-            self.washer_standard_stack.setCurrentIndex(1)
+            if self.washer_standard_stack.currentIndex() != 1:
+                self.washer_standard_stack.setCurrentIndex(1)
+                changed_index = True
         elif pressed_button.text() == "Metric":
-            self.washer_standard_stack.setCurrentIndex(2)
+            if self.washer_standard_stack.currentIndex() != 2:
+                self.washer_standard_stack.setCurrentIndex(2)
+                changed_index = True
+
+        self.filename_variables['standard'] = pressed_button.text()
+        # Clear data fields of stack
+        if changed_index:
+            self.filename_variables['inner_diameter'] = None
+            self.filename_variables['outer_diameter'] = None
+            self.filename_variables['height'] = None
+
+        self.update_fastener_filename()
 
     def change_fastener_stack(self, pressed_button):
         if pressed_button.text() == "Screw":
@@ -306,21 +335,27 @@ class My_App(QtWidgets.QMainWindow):
             self.fastener_stack.setCurrentIndex(2)
         elif pressed_button.text() == "Nut":
             self.fastener_stack.setCurrentIndex(3)
+        self.update_fastener_filename()
 
     def assign_type(self, pressed_button):
         self.filename_variables['type'] = pressed_button.text()
+        self.update_fastener_filename()
 
     def assign_subtype(self, pressed_button):
         self.filename_variables['subtype'] = pressed_button.text()
+        self.update_fastener_filename()
 
     def assign_diameter(self, pressed_button):
         self.filename_variables['diameter'] = pressed_button.text()
+        self.update_fastener_filename()
 
     def assign_length(self, pressed_button):
         self.filename_variables['length'] = pressed_button.text()
+        self.update_fastener_filename()
 
     def assign_head(self, pressed_button):
         self.filename_variables['head'] = pressed_button.text()
+        self.update_fastener_filename()
 
     def update_fastener_filename(self):
         current_name = ""
@@ -442,7 +477,10 @@ class My_App(QtWidgets.QMainWindow):
         # Unclick all buttons? No need?
         return
 
+    Camera = None
+
     def setup_camera(self, cam: Camera, exposure_us=None, balance_red=None, balance_blue=None):
+        return
         print("setup")
         with Vimba.get_instance() as vimba:
             with cam:
