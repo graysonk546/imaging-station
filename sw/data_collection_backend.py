@@ -2,6 +2,7 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from python_qt_binding import loadUi
+from fractional_spinbox import CustomDoubleSpinBox
 
 import cv2
 import sys
@@ -62,6 +63,21 @@ class CameraWorker(QtCore.QObject):
 
     def create_label_json(self, unique_id):
         """Creates json label for specific imaging run. any variables not entered into the GUI will be `None`."""
+
+        if self.app.filename_variables["standard"].lower() == "metric":
+            dia_units = "mm"
+            len_units = "mm"
+            pitch_units = "mm"
+            ht_units = "mm"
+            wd_units = "mm"
+        elif self.app.filename_variables["standard"].lower() == "inch":
+            # todo refactor dia_units when we introduce (larger) bolts that don't use ANSI
+            dia_units = "ANSI #"
+            len_units = "in"
+            pitch_units = "TPI"
+            ht_units = "in"
+            wd_units = "in"
+            
         label_json = {
             "uuid": str(unique_id),
             "status": "ok",
@@ -77,9 +93,9 @@ class CameraWorker(QtCore.QObject):
         }
         if label_json["fastener_type"] == "screw":
             attributes = {
-                "length": self.app.filename_variables["length"],
-                "diameter": self.app.filename_variables["diameter"],
-                "pitch": self.app.filename_variables["pitch"],
+                "length": str(self.app.filename_variables["length"] + " " + len_units),
+                "diameter": str(self.app.filename_variables["diameter"] + " " + dia_units),
+                "pitch": str(self.app.filename_variables["pitch"] + " " + pitch_units),
                 "head": self.app.filename_variables["head"],
                 "drive": self.app.filename_variables["drive"],
                 "direction": self.app.filename_variables["direction"],
@@ -88,22 +104,24 @@ class CameraWorker(QtCore.QObject):
             }
         elif label_json["fastener_type"] == "washer":
             attributes = {
-                "height": self.app.filename_variables["height"],
-                "inner_diameter": self.app.filename_variables["inner_diameter"],
-                "outer_diameter": self.app.filename_variables["outer_diameter"],
+                "height": str(self.app.filename_variables["height"] + " " + ht_units),
+                "inner_diameter": str(self.app.filename_variables["inner_diameter"] + " " + dia_units),
+                "outer_diameter": str(self.app.filename_variables["outer_diameter"] + " " + dia_units),
                 "material": self.app.filename_variables["material"],
-                "finish": self.app.filename_variables["finish"]
+                "finish": self.app.filename_variables["finish"],
+                "subtype": self.app.filename_variables["subtype"]
             }
         elif label_json["fastener_type"] == "nut":
             # TODO finish this spec
             attributes = {
-                "width": self.app.filename_variables["width"],
-                "height": self.app.filename_variables["height"],
-                "diameter": self.app.filename_variables["diameter"],
-                "pitch": self.app.filename_variables["pitch"],
+                "width":str(self.app.filename_variables["width"] + " " + wd_units),
+                "height": str(self.app.filename_variables["height"] + " " + ht_units),
+                "diameter": str(self.app.filename_variables["diameter"] + " " + dia_units),
+                "pitch": str(self.app.filename_variables["pitch"] + " " + pitch_units),
                 "direction": self.app.filename_variables["direction"],
                 "material": self.app.filename_variables["material"],
-                "finish": self.app.filename_variables["finish"]
+                "finish": self.app.filename_variables["finish"],
+                "subtype": self.app.filename_variables["subtype"]
             }
         label_json["attributes"] = attributes
 
@@ -113,9 +131,8 @@ class CameraWorker(QtCore.QObject):
 
         return label_json
 
-    def setup_fastener_directory(self):
+    def setup_fastener_directory(self, fastener_uuid):
         # make unique uuid for each fastener that's imaged
-        fastener_uuid = uuid.uuid4()
         fastener_directory = os.path.join(FULL_SESSION_PATH, self.filename + "_" + str(fastener_uuid))
         os.mkdir(fastener_directory)
 
@@ -158,8 +175,9 @@ class CameraWorker(QtCore.QObject):
         if FIRST_TIME_SETUP:
             self.setup_imaging_directory()
             FIRST_TIME_SETUP = False
-
-        fastener_directory = self.setup_fastener_directory()
+        
+        fastener_uuid = uuid.uuid4()
+        fastener_directory = self.setup_fastener_directory(fastener_uuid)
 
         # Calibrate camera before starting camera loop
         print("before")
@@ -223,7 +241,7 @@ class CameraWorker(QtCore.QObject):
                             self.progress.emit(frame_cv2)
                             print("Done Drawing")
                             final_filename = os.path.join(
-                                fastener_directory, str(n) + ".tiff")
+                                fastener_directory, f"{n}_{fastener_uuid}.tiff")
                             print(final_filename)
                             cv2.imwrite(final_filename, frame_cv2)
                             n += 1
@@ -243,6 +261,10 @@ class My_App(QtWidgets.QMainWindow):
     def __init__(self):
         super(My_App, self).__init__()
         loadUi("./data_collection.ui", self)
+
+        # Dynamically create certain custom widgets and add it to layout (PyQtDesigner can't put it in natively)
+        self.screw_length_imperial_double = CustomDoubleSpinBox()
+        self.horizontalLayout_25.addWidget(self.screw_length_imperial_double)
 
         # Obtaining camera and applying default settings
         with Vimba.get_instance() as vimba:
@@ -469,8 +491,15 @@ class My_App(QtWidgets.QMainWindow):
     def update_fastener_filename(self):
         current_name = ""
         for key, val in self.filename_variables.items():
-            if type(val) is str:
-                current_name += val + "_"
+            if val is not None:
+                # attempt conversion to string
+                try:
+                    str_val = str(val)
+                    # strip out slash from fraction
+                    str_val = str_val.replace("/", "_")
+                    current_name += str_val + "_"
+                except TypeError:
+                    pass
         self.fastener_filename.setText(current_name)
 
     def reset_filename_variables_when_changing_fastener(self, pressed_button):
