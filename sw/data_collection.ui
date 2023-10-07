@@ -1336,6 +1336,66 @@
                    <string>Diameter (Metric)</string>
                   </property>
                   <layout class="QGridLayout" name="gridLayout_11">
+                   <item row="0" column="3">
+                    <widget class="QPushButton" name="pushButton_133">
+                     <property name="text">
+                      <string>M3</string>
+                     </property>
+                     <attribute name="buttonGroup">
+                      <string notr="true">ScrewDiameterMetricGroup</string>
+                     </attribute>
+                    </widget>
+                   </item>
+                   <item row="0" column="8">
+                    <widget class="QPushButton" name="pushButton_138">
+                     <property name="text">
+                      <string>M8</string>
+                     </property>
+                     <attribute name="buttonGroup">
+                      <string notr="true">ScrewDiameterMetricGroup</string>
+                     </attribute>
+                    </widget>
+                   </item>
+                   <item row="0" column="6">
+                    <widget class="QPushButton" name="pushButton_136">
+                     <property name="text">
+                      <string>M6</string>
+                     </property>
+                     <attribute name="buttonGroup">
+                      <string notr="true">ScrewDiameterMetricGroup</string>
+                     </attribute>
+                    </widget>
+                   </item>
+                   <item row="0" column="5">
+                    <widget class="QPushButton" name="pushButton_135">
+                     <property name="text">
+                      <string>M5</string>
+                     </property>
+                     <attribute name="buttonGroup">
+                      <string notr="true">ScrewDiameterMetricGroup</string>
+                     </attribute>
+                    </widget>
+                   </item>
+                   <item row="0" column="9">
+                    <widget class="QPushButton" name="pushButton_139">
+                     <property name="text">
+                      <string>M9</string>
+                     </property>
+                     <attribute name="buttonGroup">
+                      <string notr="true">ScrewDiameterMetricGroup</string>
+                     </attribute>
+                    </widget>
+                   </item>
+                   <item row="0" column="10">
+                    <widget class="QPushButton" name="pushButton_140">
+                     <property name="text">
+                      <string>M10</string>
+                     </property>
+                     <attribute name="buttonGroup">
+                      <string notr="true">ScrewDiameterMetricGroup</string>
+                     </attribute>
+                    </widget>
+                   </item>
                    <item row="0" column="1">
                     <widget class="QPushButton" name="pushButton_72">
                      <property name="text">
@@ -1349,37 +1409,7 @@
                      </attribute>
                     </widget>
                    </item>
-                   <item row="0" column="7">
-                    <widget class="QPushButton" name="pushButton_138">
-                     <property name="text">
-                      <string>M8</string>
-                     </property>
-                     <attribute name="buttonGroup">
-                      <string notr="true">ScrewDiameterMetricGroup</string>
-                     </attribute>
-                    </widget>
-                   </item>
-                   <item row="0" column="9">
-                    <widget class="QPushButton" name="pushButton_140">
-                     <property name="text">
-                      <string>M10</string>
-                     </property>
-                     <attribute name="buttonGroup">
-                      <string notr="true">ScrewDiameterMetricGroup</string>
-                     </attribute>
-                    </widget>
-                   </item>
-                   <item row="0" column="5">
-                    <widget class="QPushButton" name="pushButton_136">
-                     <property name="text">
-                      <string>M6</string>
-                     </property>
-                     <attribute name="buttonGroup">
-                      <string notr="true">ScrewDiameterMetricGroup</string>
-                     </attribute>
-                    </widget>
-                   </item>
-                   <item row="0" column="3">
+                   <item row="0" column="4">
                     <widget class="QPushButton" name="pushButton_134">
                      <property name="text">
                       <string>M4</string>
@@ -1389,27 +1419,17 @@
                      </attribute>
                     </widget>
                    </item>
-                   <item row="0" column="8">
-                    <widget class="QPushButton" name="pushButton_139">
+                   <item row="0" column="0">
+                    <widget class="QPushButton" name="pushButton_71">
                      <property name="text">
-                      <string>M9</string>
+                      <string>M1</string>
                      </property>
                      <attribute name="buttonGroup">
                       <string notr="true">ScrewDiameterMetricGroup</string>
                      </attribute>
                     </widget>
                    </item>
-                   <item row="0" column="2">
-                    <widget class="QPushButton" name="pushButton_133">
-                     <property name="text">
-                      <string>M3</string>
-                     </property>
-                     <attribute name="buttonGroup">
-                      <string notr="true">ScrewDiameterMetricGroup</string>
-                     </attribute>
-                    </widget>
-                   </item>
-                   <item row="0" column="6">
+                   <item row="0" column="7">
                     <widget class="QPushButton" name="pushButton_137">
                      <property name="text">
                       <string>M7</string>
@@ -1422,20 +1442,10 @@
                      </attribute>
                     </widget>
                    </item>
-                   <item row="0" column="4">
-                    <widget class="QPushButton" name="pushButton_135">
+                   <item row="0" column="2">
+                    <widget class="QPushButton" name="pushButton">
                      <property name="text">
-                      <string>M5</string>
-                     </property>
-                     <attribute name="buttonGroup">
-                      <string notr="true">ScrewDiameterMetricGroup</string>
-                     </attribute>
-                    </widget>
-                   </item>
-                   <item row="0" column="0">
-                    <widget class="QPushButton" name="pushButton_71">
-                     <property name="text">
-                      <string>M1</string>
+                      <string>M2.5</string>
                      </property>
                      <attribute name="buttonGroup">
                       <string notr="true">ScrewDiameterMetricGroup</string>
@@ -4420,31 +4430,31 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="WasherOuterDiameterMetricGroup"/>
-  <buttongroup name="NutFinishGroup"/>
   <buttongroup name="NutTypeGroup"/>
-  <buttongroup name="WasherFinishGroup"/>
   <buttongroup name="ScrewFinishGroup"/>
+  <buttongroup name="ScrewPitchMetricGroup"/>
+  <buttongroup name="WasherInnerDiameterMetricGroup"/>
+  <buttongroup name="FastenerTypeGroup"/>
+  <buttongroup name="WasherStandardGroup"/>
+  <buttongroup name="NutHeightMetricGroup"/>
   <buttongroup name="ScrewHeadGroup"/>
   <buttongroup name="WasherMaterialGroup"/>
-  <buttongroup name="WasherStandardGroup"/>
-  <buttongroup name="WasherInnerDiameterMetricGroup"/>
-  <buttongroup name="NutHeightMetricGroup"/>
-  <buttongroup name="NutDirectionGroup"/>
+  <buttongroup name="NutFinishGroup"/>
+  <buttongroup name="ScrewLengthMetricGroup"/>
+  <buttongroup name="NutDiameterMetricGroup"/>
+  <buttongroup name="WasherTypeGroup"/>
   <buttongroup name="ScrewStandardGroup"/>
   <buttongroup name="ScrewMaterialGroup"/>
-  <buttongroup name="FastenerTypeGroup"/>
-  <buttongroup name="ScrewPitchMetricGroup"/>
-  <buttongroup name="WasherTypeGroup"/>
-  <buttongroup name="WasherHeightMetricGroup"/>
   <buttongroup name="ScrewDriveGroup"/>
+  <buttongroup name="WasherFinishGroup"/>
+  <buttongroup name="WasherHeightMetricGroup"/>
+  <buttongroup name="NutStandardGroup"/>
+  <buttongroup name="WasherOuterDiameterMetricGroup"/>
   <buttongroup name="NutMaterialGroup"/>
+  <buttongroup name="ScrewDiameterMetricGroup"/>
+  <buttongroup name="NutWidthMetricGroup"/>
+  <buttongroup name="NutDirectionGroup"/>
   <buttongroup name="ScrewDirectionGroup"/>
   <buttongroup name="NutPitchMetricGroup"/>
-  <buttongroup name="ScrewLengthMetricGroup"/>
-  <buttongroup name="ScrewDiameterMetricGroup"/>
-  <buttongroup name="NutDiameterMetricGroup"/>
-  <buttongroup name="NutStandardGroup"/>
-  <buttongroup name="NutWidthMetricGroup"/>
  </buttongroups>
 </ui>
