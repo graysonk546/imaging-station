@@ -22,8 +22,9 @@ import torchvision.transforms.transforms as T
 from utils import ModelHelper, DisplayHelper
 
 FOLDER_NAME = "images/imaging_test_{date}"
-REMOTE_IMAGE_FOLDER = "gdrive_more_storage:2357 Screw Sorter/Data Real"
+REMOTE_IMAGE_FOLDER = "gdrive_more_storage:2357\ Screw\ Sorter/Data\ Real"
 CURRENT_STAGED_IMAGE_FOLDER = ""
+PARENT_FOLDER = "images"
 
 CAMERA = None
 
@@ -272,7 +273,8 @@ class My_App(QtWidgets.QMainWindow):
         self.washer_height_imperial_double.textChanged.connect(self.assign_height)
         self.WasherTypeGroup.buttonClicked.connect(self.assign_subtype)
 
-        self.upload_gdrive_button.clicked.connect(self.upload_to_gdrive)
+        self.upload_single_gdrive_button.clicked.connect(self.upload_single_session_to_gdrive)
+        self.upload_all_gdrive_button.clicked.connect(self.upload_all_sessions_to_gdrive)
         self.discard_images_button.clicked.connect(self.redo_imaging)
 
         self.model_helper = ModelHelper("./model_v1_m2vsm3.pt")
@@ -444,7 +446,6 @@ class My_App(QtWidgets.QMainWindow):
         self.worker.finished.connect(self.camera_thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
         self.camera_thread.finished.connect(self.camera_thread.deleteLater)
-        self.camera_thread.finished.connect(self.reset_filename_variables)
         self.camera_thread.start()
 
         # switch to camera tab
@@ -460,8 +461,10 @@ class My_App(QtWidgets.QMainWindow):
         CURRENT_STAGED_IMAGE_FOLDER = image_directory
         # draw images on the page
         images = [os.path.join(image_directory, x)
-                  for x in sorted(os.listdir(image_directory))]
+                  for x in sorted(os.listdir(image_directory))
+                  if x.endswith(".tiff")]
         print(images)
+        # photo_labels corresponds to squares within the GUI
         photo_labels = [self.photo1, self.photo2, self.photo3, self.photo4,
                         self.photo5, self.photo6, self.photo7, self.photo8,
                         self.photo9]
@@ -495,7 +498,30 @@ class My_App(QtWidgets.QMainWindow):
         #   \`        `-\         /-'        '/
         #    `                               '   
 
-    def upload_to_gdrive(self):
+    def upload_all_sessions_to_gdrive(self):
+        # do an upload of all sessions. Will only push files that have changed compared to what's in the cloud.
+        image_directory = PARENT_FOLDER
+        upload_path = os.path.join(REMOTE_IMAGE_FOLDER)
+        print(f"Uploading to Drive. Path: {upload_path}")
+        print(f"On-device path: {image_directory}")
+        try:
+            rclone.copy(image_directory, upload_path)
+        except UnicodeDecodeError as uni_e:
+            print(str(uni_e))
+            print("Error. Wait a few seconds and click 'Upload to Google Drive' again. Consult code for Kenneth commentary.")
+            print("If upload continues to fail after multiple retries, try typing this into your command line:")
+            print(f"rclone copy {image_directory} {upload_path}")
+            return
+            # Kenneth commentary: I think it's something to do with the image data not getting flushed to the file, so the copy() function finds files that are empty.
+            # I find that it always works after I retry a few times, so it's not a high-prio bug.
+        except Exception as e:
+            print(str(e))
+            print("You probably need to refresh the token with rclone config. Consult the README for a guide on how to do so.")
+            return
+        print(f"Upload complete")
+        self.DriveUploadConfirmStack.setCurrentIndex(1)
+
+    def upload_single_session_to_gdrive(self):
         # Split input so the gdrive only has the imaging_test_../ folder,
         # and we don't upload the images/ parent folder too
         image_directory = CURRENT_STAGED_IMAGE_FOLDER

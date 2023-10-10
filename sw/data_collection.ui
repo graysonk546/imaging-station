@@ -77,7 +77,7 @@
         <item>
          <widget class="QStackedWidget" name="fastener_stack">
           <property name="currentIndex">
-           <number>3</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="label_select_blank"/>
           <widget class="QWidget" name="Screw">
@@ -848,10 +848,10 @@
                    <item>
                     <widget class="QDoubleSpinBox" name="screw_length_metric_double">
                      <property name="decimals">
-                      <number>2</number>
+                      <number>0</number>
                      </property>
                      <property name="singleStep">
-                      <double>0.050000000000000</double>
+                      <double>1.000000000000000</double>
                      </property>
                     </widget>
                    </item>
@@ -1818,7 +1818,7 @@
             <item row="1" column="0" colspan="2">
              <widget class="QStackedWidget" name="washer_standard_stack">
               <property name="currentIndex">
-               <number>2</number>
+               <number>0</number>
               </property>
               <widget class="QWidget" name="washer_blank"/>
               <widget class="QWidget" name="washer_inch">
@@ -2199,7 +2199,7 @@
             <item row="3" column="0" colspan="3">
              <widget class="QStackedWidget" name="nut_standard_stack">
               <property name="currentIndex">
-               <number>1</number>
+               <number>0</number>
               </property>
               <widget class="QWidget" name="nut_blank"/>
               <widget class="QWidget" name="nut_inch">
@@ -3320,10 +3320,17 @@
           </property>
           <widget class="QWidget" name="page">
            <layout class="QGridLayout" name="gridLayout_6">
-            <item row="2" column="0">
-             <widget class="QPushButton" name="upload_gdrive_button">
+            <item row="2" column="3">
+             <widget class="QPushButton" name="classify_m2_vs_m3">
               <property name="text">
-               <string>Upload to Google Drive</string>
+               <string>Classify M2 vs M3</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QPushButton" name="upload_single_gdrive_button">
+              <property name="text">
+               <string>Upload this session ONLY to Google Drive</string>
               </property>
              </widget>
             </item>
@@ -3340,17 +3347,17 @@
               </property>
              </widget>
             </item>
+            <item row="2" column="1">
+             <widget class="QPushButton" name="upload_all_gdrive_button">
+              <property name="text">
+               <string>Upload all past sessions to Google Drive</string>
+              </property>
+             </widget>
+            </item>
             <item row="2" column="2">
              <widget class="QPushButton" name="discard_images_button">
               <property name="text">
                <string>Discard Images and Redo Session</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="QPushButton" name="classify_m2_vs_m3">
-              <property name="text">
-               <string>Classify M2 vs M3</string>
               </property>
              </widget>
             </item>
