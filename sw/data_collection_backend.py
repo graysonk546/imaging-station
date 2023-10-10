@@ -52,14 +52,34 @@ class CameraWorker(QtCore.QObject):
 
     def create_label_json(self):
         unit = "mm" if self.app.filename_variables["standard"] == "Metric" else "\""
-        label_json = {
-            "length": self.app.filename_variables["length"] + unit,
-            "thread_size": self.app.filename_variables["diameter"],
-            "thread_pitch": self.app.filename_variables["pitch"] + unit,
-            "system_of_measurement": self.app.filename_variables["standard"],
-            "head_type": self.app.filename_variables["head"],
-            "drive_style": self.app.filename_variables["drive"],
-        }
+        fastener_type = self.app.filename_variables['type']
+        if fastener_type == "Screw":
+            # TODO finish this spec
+            label_json = {
+                "length": self.app.filename_variables["length"] + unit,
+                "thread_size": self.app.filename_variables["diameter"],
+                "thread_pitch": self.app.filename_variables["pitch"] + unit,
+                "system_of_measurement": self.app.filename_variables["standard"],
+                "head_type": self.app.filename_variables["head"],
+                "drive_style": self.app.filename_variables["drive"],
+            }
+        elif fastener_type == "Washer":
+            # TODO finish this spec
+            label_json = {
+                "length": self.app.filename_variables["length"] + unit,
+                "system_of_measurement": self.app.filename_variables["standard"],
+                "head_type": self.app.filename_variables["head"],
+                "drive_style": self.app.filename_variables["drive"],
+            }
+        elif fastener_type == "Nut":
+            # TODO finish this spec
+            label_json = {
+                "width": self.app.filename_variables["width"],
+                "height": self.app.filename_variables["height"],
+                "thread_size": self.app.filename_variables["diameter"],
+                "thread_pitch": self.app.filename_variables["pitch"] + unit,
+                "system_of_measurement": self.app.filename_variables["standard"],
+            }
 
         for k, v in label_json.items():
             if not v:
@@ -206,6 +226,8 @@ class My_App(QtWidgets.QMainWindow):
             self.change_fastener_stack)
         self.FastenerTypeGroup.buttonClicked.connect(
             self.reset_filename_variables_when_changing_fastener)
+        self.FastenerTypeGroup.buttonClicked.connect(
+            self.assign_fastener_type)
         self.NutDiameterMetricGroup.buttonClicked.connect(self.assign_diameter)
         self.NutDiameterImperialGroup.buttonClicked.connect(self.assign_diameter)
         self.NutFinishGroup.buttonClicked.connect(self.assign_finish)
@@ -365,7 +387,7 @@ class My_App(QtWidgets.QMainWindow):
             self.fastener_stack.setCurrentIndex(3)
         self.update_fastener_filename()
 
-    def assign_type(self, pressed_button):
+    def assign_fastener_type(self, pressed_button):
         self.filename_variables['type'] = pressed_button.text()
         self.update_fastener_filename()
 
