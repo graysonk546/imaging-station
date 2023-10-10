@@ -8,6 +8,7 @@ import sys
 import threading
 import time
 import serial
+import json
 
 from vimba import *
 import os
@@ -21,7 +22,7 @@ import torchvision.transforms.transforms as T
 from utils import ModelHelper, DisplayHelper
 
 FOLDER_NAME = "images/imaging_test_{date}"
-REMOTE_IMAGE_FOLDER = "gdrive:2306\ Screw\ Sorter/Data/real_image_sets/"
+REMOTE_IMAGE_FOLDER = "gdrive_more_storage:2357 Screw Sorter/Data Real"
 CURRENT_STAGED_IMAGE_FOLDER = ""
 
 CAMERA = None
@@ -33,7 +34,7 @@ class CameraWorker(QtCore.QObject):
     change_camera_settings = QtCore.pyqtSignal(Camera, int, float, float)
     progress = QtCore.pyqtSignal(numpy.ndarray)
 
-    def __init__(self, filename, model_helper=None, display_helper=None,feed=False):
+    def __init__(self, filename, model_helper=None, display_helper=None,feed=False, app=None):
         super(CameraWorker, self).__init__()
         self.filename = filename
         # Camera config
@@ -44,9 +45,27 @@ class CameraWorker(QtCore.QObject):
         self.side_view_balance_red= 2.52
         self.side_view_balance_blue = 1.45
 
+        self.app = app
         self.model_helper = model_helper
         self.display_helper = display_helper
         self.feed = feed
+
+    def create_label_json(self):
+        unit = "mm" if self.app.filename_variables["standard"] == "Metric" else "\""
+        label_json = {
+            "length": self.app.filename_variables["length"] + unit,
+            "thread_size": self.app.filename_variables["diameter"],
+            "thread_pitch": self.app.filename_variables["pitch"] + unit,
+            "system_of_measurement": self.app.filename_variables["standard"],
+            "head_type": self.app.filename_variables["head"],
+            "drive_style": self.app.filename_variables["drive"],
+        }
+
+        for k, v in label_json.items():
+            if not v:
+                print(f"{k} not selected properly")
+
+        return label_json
 
     def run(self):
         # establish serial communication with Bluepill
@@ -58,12 +77,19 @@ class CameraWorker(QtCore.QObject):
         s.flush()
 
         # make a directory to temporarily store the images
-        date = datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
+        date = datetime.now().strftime("%d_%m_%y_%h_%m_%s")
         f = FOLDER_NAME.format(date=date)
         if not os.path.exists("images"):
             os.mkdir("images")
         os.mkdir(f)
         n = 0
+
+        label_json = self.create_label_json()
+        label_json_path = os.path.join(f, "label.json")
+
+        with open(label_json_path, 'w') as file_obj:
+            json.dump(label_json, file_obj)
+
 
         # Calibrate camera before starting camera loop
         print("before")
@@ -89,11 +115,13 @@ class CameraWorker(QtCore.QObject):
                 break
 
             # wait on serial communication
-            if True:
-            # if s.in_waiting > 0:
+            # to get around serial comms (ie test w/o bluepill), swap this if-statement with "if True"
+            # and replace "message" with "picture\r\n"
+            # if True:
+            if s.in_waiting > 0:
                 time.sleep(1)
-                message = "picture\r\n"
-                # message = s.readline().decode("ascii")
+                # message = "picture\r\n"
+                message = s.readline().decode("ascii")
                 if message == "picture\r\n":
                     print("Obtaining Frame")
                     # requirement that Vimba instance is opened using "with"
@@ -190,7 +218,7 @@ class My_App(QtWidgets.QMainWindow):
         self.NutTypeGroup.buttonClicked.connect(self.assign_subtype)
         self.nut_height_metric_double.textChanged.connect(self.assign_height)
         self.nut_width_metric_double.textChanged.connect(self.assign_width)
-        self.nut_width_imperial_double.textChanged.connect(self.assign_width)
+        self.nut_height_imperial_double.textChanged.connect(self.assign_height)
         self.nut_width_imperial_double.textChanged.connect(self.assign_width)
 
 
@@ -384,7 +412,7 @@ class My_App(QtWidgets.QMainWindow):
         self.worker = CameraWorker(self.fastener_filename.text(),
                                    model_helper = self.model_helper,
                                    display_helper = self.display_helper,
-                                   feed = feed)
+                                   feed = feed, app=self)
         self.worker.moveToThread(self.camera_thread)
         # Connect signals/slots
         self.camera_thread.started.connect(self.worker.run)
@@ -399,6 +427,7 @@ class My_App(QtWidgets.QMainWindow):
 
         # switch to camera tab
         self.tabWidget.setCurrentIndex(1)
+
 
     def redo_imaging(self):
         # May contain more cleanup later
