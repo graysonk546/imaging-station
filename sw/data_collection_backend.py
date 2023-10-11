@@ -122,7 +122,7 @@ class CameraWorker(QtCore.QObject):
         label_json = self.create_label_json(fastener_uuid)
         label_json_path = os.path.join(fastener_directory, "metadata.json")
 
-        with open(label_json_path, 'w') as file_obj:
+        with open(label_json_path, "w") as file_obj:
             json.dump(label_json, file_obj)
         return fastener_directory
 
@@ -160,7 +160,7 @@ class CameraWorker(QtCore.QObject):
             FIRST_TIME_SETUP = False
 
         fastener_directory = self.setup_fastener_directory()
-        
+
         # Calibrate camera before starting camera loop
         print("before")
         self.change_camera_settings.emit(CAMERA, self.top_down_exposure_us, self.top_down_balance_red, self.top_down_balance_blue)
@@ -248,7 +248,7 @@ class My_App(QtWidgets.QMainWindow):
         with Vimba.get_instance() as vimba:
             cams = vimba.get_all_cameras()
         if not cams:
-            raise Exception('No Cameras accessible. Abort.')
+            raise Exception("No Cameras accessible. Abort.")
         self.cam = cams[0]
         global CAMERA
         CAMERA = self.cam
@@ -256,22 +256,22 @@ class My_App(QtWidgets.QMainWindow):
 
         # The order of fields put in here determines the order in the filename.
         self.filename_variables = OrderedDict()
-        self.filename_variables['type'] = None
-        self.filename_variables['standard'] = None
-        self.filename_variables['subtype'] = None
-        self.filename_variables['diameter'] = None
-        self.filename_variables['pitch'] = None
-        self.filename_variables['length'] = None
-        self.filename_variables['width'] = None
-        self.filename_variables['inner_diameter'] = None
-        self.filename_variables['outer_diameter'] = None
-        self.filename_variables['height'] = None
-        self.filename_variables['head'] = None
-        self.filename_variables['drive'] = None
-        self.filename_variables['direction'] = None
-        self.filename_variables['material'] = None
-        self.filename_variables['finish'] = None
-        self.filename_variables[''] = None
+        self.filename_variables["type"] = None
+        self.filename_variables["standard"] = None
+        self.filename_variables["subtype"] = None
+        self.filename_variables["diameter"] = None
+        self.filename_variables["pitch"] = None
+        self.filename_variables["length"] = None
+        self.filename_variables["width"] = None
+        self.filename_variables["inner_diameter"] = None
+        self.filename_variables["outer_diameter"] = None
+        self.filename_variables["height"] = None
+        self.filename_variables["head"] = None
+        self.filename_variables["drive"] = None
+        self.filename_variables["direction"] = None
+        self.filename_variables["material"] = None
+        self.filename_variables["finish"] = None
+        self.filename_variables[""] = None
 
         self.activate_camera_feed.clicked.connect(
             self.start_feed_thread
@@ -338,19 +338,19 @@ class My_App(QtWidgets.QMainWindow):
         self.display_helper = None
 
     def assign_height(self, height_text):
-        self.filename_variables['height'] = height_text
+        self.filename_variables["height"] = height_text
         self.update_fastener_filename()
 
     def assign_width(self, width_text):
-        self.filename_variables['width'] = width_text
+        self.filename_variables["width"] = width_text
         self.update_fastener_filename()
 
     def assign_drive(self, pressed_button):
-        self.filename_variables['drive'] = pressed_button.text()
+        self.filename_variables["drive"] = pressed_button.text()
         self.update_fastener_filename()
 
     def assign_pitch(self, pressed_button):
-        self.filename_variables['pitch'] = pressed_button.text()
+        self.filename_variables["pitch"] = pressed_button.text()
         self.update_fastener_filename()
 
     def change_nut_standard_stack(self, pressed_button):
@@ -365,13 +365,13 @@ class My_App(QtWidgets.QMainWindow):
                 self.nut_standard_stack.setCurrentIndex(2)
                 changed_index = True
 
-        self.filename_variables['standard'] = pressed_button.text()
+        self.filename_variables["standard"] = pressed_button.text()
        # Clear data fields of stack
         if changed_index:
-            self.filename_variables['width'] = None
-            self.filename_variables['height'] = None
-            self.filename_variables['diameter'] = None
-            self.filename_variables['pitch'] = None
+            self.filename_variables["width"] = None
+            self.filename_variables["height"] = None
+            self.filename_variables["diameter"] = None
+            self.filename_variables["pitch"] = None
 
         self.update_fastener_filename()
 
@@ -387,33 +387,33 @@ class My_App(QtWidgets.QMainWindow):
                 self.screw_standard_stack.setCurrentIndex(2)
                 changed_index = True
         
-        self.filename_variables['standard'] = pressed_button.text()
+        self.filename_variables["standard"] = pressed_button.text()
         # Clear data fields of stack
         if changed_index:
-            self.filename_variables['length'] = None
-            self.filename_variables['diameter'] = None
-            self.filename_variables['pitch'] = None
+            self.filename_variables["length"] = None
+            self.filename_variables["diameter"] = None
+            self.filename_variables["pitch"] = None
 
         self.update_fastener_filename()
 
     def assign_direction(self, pressed_button):
-        self.filename_variables['direction'] = pressed_button.text()
+        self.filename_variables["direction"] = pressed_button.text()
         self.update_fastener_filename()
 
     def assign_finish(self, pressed_button):
-        self.filename_variables['finish'] = pressed_button.text()
+        self.filename_variables["finish"] = pressed_button.text()
         self.update_fastener_filename()
 
     def assign_inner_diameter(self, inner_diameter_text):
-        self.filename_variables['inner_diameter'] = inner_diameter_text
+        self.filename_variables["inner_diameter"] = inner_diameter_text
         self.update_fastener_filename()
 
     def assign_material(self, pressed_button):
-        self.filename_variables['material'] = pressed_button.text()
+        self.filename_variables["material"] = pressed_button.text()
         self.update_fastener_filename()
 
     def assign_outer_diameter(self, outer_diameter_text):
-        self.filename_variables['outer_diameter'] = outer_diameter_text
+        self.filename_variables["outer_diameter"] = outer_diameter_text
         self.update_fastener_filename()
 
     def change_washer_standard_stack(self, pressed_button):
@@ -428,12 +428,12 @@ class My_App(QtWidgets.QMainWindow):
                 self.washer_standard_stack.setCurrentIndex(2)
                 changed_index = True
 
-        self.filename_variables['standard'] = pressed_button.text()
+        self.filename_variables["standard"] = pressed_button.text()
         # Clear data fields of stack
         if changed_index:
-            self.filename_variables['inner_diameter'] = None
-            self.filename_variables['outer_diameter'] = None
-            self.filename_variables['height'] = None
+            self.filename_variables["inner_diameter"] = None
+            self.filename_variables["outer_diameter"] = None
+            self.filename_variables["height"] = None
 
         self.update_fastener_filename()
 
@@ -447,23 +447,23 @@ class My_App(QtWidgets.QMainWindow):
         self.update_fastener_filename()
 
     def assign_fastener_type(self, pressed_button):
-        self.filename_variables['type'] = pressed_button.text()
+        self.filename_variables["type"] = pressed_button.text()
         self.update_fastener_filename()
 
     def assign_subtype(self, pressed_button):
-        self.filename_variables['subtype'] = pressed_button.text()
+        self.filename_variables["subtype"] = pressed_button.text()
         self.update_fastener_filename()
 
     def assign_diameter(self, pressed_button):
-        self.filename_variables['diameter'] = pressed_button.text()
+        self.filename_variables["diameter"] = pressed_button.text()
         self.update_fastener_filename()
 
     def assign_length(self, length_text):
-        self.filename_variables['length'] = length_text
+        self.filename_variables["length"] = length_text
         self.update_fastener_filename()
 
     def assign_head(self, pressed_button):
-        self.filename_variables['head'] = pressed_button.text()
+        self.filename_variables["head"] = pressed_button.text()
         self.update_fastener_filename()
 
     def update_fastener_filename(self):
@@ -475,12 +475,12 @@ class My_App(QtWidgets.QMainWindow):
 
     def reset_filename_variables_when_changing_fastener(self, pressed_button):
         text = pressed_button.text()
-        if self.filename_variables['type'] == text:
+        if self.filename_variables["type"] == text:
             # effect of clicking on the same button
             return
         else:
             self.reset_filename_variables()
-            self.filename_variables['type'] = text
+            self.filename_variables["type"] = text
             self.fastener_filename.setText(text)
 
     def start_feed_thread(self):
@@ -582,8 +582,9 @@ class My_App(QtWidgets.QMainWindow):
         # Split input so the gdrive only has the imaging_test_../ folder,
         # and we don't upload the images/ parent folder too
         image_directory = CURRENT_STAGED_IMAGE_FOLDER
+        session_folder = os.path.split(FULL_SESSION_PATH)[-1]
         lowest_level_folder = os.path.split(image_directory)[-1]
-        upload_path = os.path.join(REMOTE_IMAGE_FOLDER, lowest_level_folder)
+        upload_path = os.path.join(REMOTE_IMAGE_FOLDER, session_folder, lowest_level_folder)
         print(f"Uploading to Drive. Path: {upload_path}")
         print(f"On-device path: {image_directory}")
         try:
@@ -620,10 +621,10 @@ class My_App(QtWidgets.QMainWindow):
                     print("exposure")
                     # If exposure_us is set, manually change exposure value
                     if isinstance(exposure_us, int):
-                        cam.ExposureAuto.set('Off')
+                        cam.ExposureAuto.set("Off")
                         cam.ExposureTime.set(exposure_us)
                     else:
-                        cam.ExposureAuto.set('Continuous')
+                        cam.ExposureAuto.set("Continuous")
 
                 except (AttributeError, VimbaFeatureError) as e:
                     print("error:" + str(e))
@@ -634,15 +635,15 @@ class My_App(QtWidgets.QMainWindow):
                     print("balance")
                     # If balance is set, manually change white balance value
                     if isinstance(balance_red, float):
-                        cam.BalanceWhiteAuto.set('Off')
-                        cam.BalanceRatioSelector.set('Red')
+                        cam.BalanceWhiteAuto.set("Off")
+                        cam.BalanceRatioSelector.set("Red")
                         cam.BalanceRatio.set(balance_red)
                     if isinstance(balance_blue, float):
-                        cam.BalanceWhiteAuto.set('Off')
-                        cam.BalanceRatioSelector.set('Blue')
+                        cam.BalanceWhiteAuto.set("Off")
+                        cam.BalanceRatioSelector.set("Blue")
                         cam.BalanceRatio.set(balance_blue)
                     else:
-                        cam.BalanceWhiteAuto.set('Continuous')
+                        cam.BalanceWhiteAuto.set("Continuous")
 
                 except (AttributeError, VimbaFeatureError):
                     pass
@@ -675,7 +676,7 @@ class My_App(QtWidgets.QMainWindow):
 
                     else:
                         raise Exception(
-                            'Camera does not support a OpenCV compatible format natively.')
+                            "Camera does not support a OpenCV compatible format natively.")
 
     def draw_image_on_gui(self, frame):
         resized_photo = self.resize_cv_photo(frame, 20)
