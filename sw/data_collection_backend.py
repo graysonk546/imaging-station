@@ -9,6 +9,7 @@ import threading
 import time
 import serial
 import json
+import uuid
 
 from vimba import *
 import os
@@ -21,10 +22,18 @@ import torch
 import torchvision.transforms.transforms as T
 from utils import ModelHelper, DisplayHelper
 
-FOLDER_NAME = "images/imaging_test_{date}"
-REMOTE_IMAGE_FOLDER = "gdrive_more_storage:2357\ Screw\ Sorter/Data\ Real"
+# TODO Figure out a better way to move these around ie not globals
+TOP_IMAGES_FOLDER = os.path.join(os.path.dirname(__file__), "images")
+FULL_SESSION_PATH = ""
+REMOTE_IMAGE_FOLDER = "gdrive_more_storage:2357 Screw Sorter/Data Real"
 CURRENT_STAGED_IMAGE_FOLDER = ""
-PARENT_FOLDER = "images"
+IMAGING_STATION_VERSION="1.0"
+IMAGING_STATION_CONFIGURATION="A1"
+FIRST_TIME_SETUP=True
+# TODO Be able to toggle these flags in the GUI, communicate w/ bp
+TOPDOWN_INCLUDED=True
+SIDEON_INCLUDED=True
+NUMBER_SIDEON=9
 
 CAMERA = None
 
@@ -51,36 +60,52 @@ class CameraWorker(QtCore.QObject):
         self.display_helper = display_helper
         self.feed = feed
 
-    def create_label_json(self):
-        unit = "mm" if self.app.filename_variables["standard"] == "Metric" else "\""
-        fastener_type = self.app.filename_variables['type']
-        if fastener_type == "Screw":
-            # TODO finish this spec
-            label_json = {
-                "length": self.app.filename_variables["length"] + unit,
-                "thread_size": self.app.filename_variables["diameter"],
-                "thread_pitch": self.app.filename_variables["pitch"] + unit,
-                "system_of_measurement": self.app.filename_variables["standard"],
-                "head_type": self.app.filename_variables["head"],
-                "drive_style": self.app.filename_variables["drive"],
+    def create_label_json(self, unique_id):
+        """Creates json label for specific imaging run. any variables not entered into the GUI will be `None`."""
+        label_json = {
+            "uuid": str(unique_id),
+            "status": "ok",
+            "imaging_station_version": IMAGING_STATION_VERSION,
+            "imaging_station_configuration": IMAGING_STATION_CONFIGURATION,
+            "time": datetime.now().strftime("%d_%m_%y_%h_%m_%s"),
+            "fastener_type": self.app.filename_variables["type"].lower(),
+            "measurement_system": self.app.filename_variables["standard"].lower(),
+            "topdown_included": TOPDOWN_INCLUDED,
+            "sideon_included": SIDEON_INCLUDED,
+            "number_sideon": NUMBER_SIDEON,
+            "attributes":{}
+        }
+        if label_json["fastener_type"] == "screw":
+            attributes = {
+                "length": self.app.filename_variables["length"],
+                "diameter": self.app.filename_variables["diameter"],
+                "pitch": self.app.filename_variables["pitch"],
+                "head": self.app.filename_variables["head"],
+                "drive": self.app.filename_variables["drive"],
+                "direction": self.app.filename_variables["direction"],
+                "material": self.app.filename_variables["material"],
+                "finish": self.app.filename_variables["finish"]
             }
-        elif fastener_type == "Washer":
-            # TODO finish this spec
-            label_json = {
-                "length": self.app.filename_variables["length"] + unit,
-                "system_of_measurement": self.app.filename_variables["standard"],
-                "head_type": self.app.filename_variables["head"],
-                "drive_style": self.app.filename_variables["drive"],
+        elif label_json["fastener_type"] == "washer":
+            attributes = {
+                "height": self.app.filename_variables["height"],
+                "inner_diameter": self.app.filename_variables["inner_diameter"],
+                "outer_diameter": self.app.filename_variables["outer_diameter"],
+                "material": self.app.filename_variables["material"],
+                "finish": self.app.filename_variables["finish"]
             }
-        elif fastener_type == "Nut":
+        elif label_json["fastener_type"] == "nut":
             # TODO finish this spec
-            label_json = {
+            attributes = {
                 "width": self.app.filename_variables["width"],
                 "height": self.app.filename_variables["height"],
-                "thread_size": self.app.filename_variables["diameter"],
-                "thread_pitch": self.app.filename_variables["pitch"] + unit,
-                "system_of_measurement": self.app.filename_variables["standard"],
+                "diameter": self.app.filename_variables["diameter"],
+                "pitch": self.app.filename_variables["pitch"],
+                "direction": self.app.filename_variables["direction"],
+                "material": self.app.filename_variables["material"],
+                "finish": self.app.filename_variables["finish"]
             }
+        label_json["attributes"] = attributes
 
         for k, v in label_json.items():
             if not v:
@@ -88,30 +113,54 @@ class CameraWorker(QtCore.QObject):
 
         return label_json
 
-    def run(self):
-        # establish serial communication with Bluepill
-        s = serial.Serial("/dev/ttyUSB0", 115200)
+    def setup_fastener_directory(self):
+        # make unique uuid for each fastener that's imaged
+        fastener_uuid = uuid.uuid4()
+        fastener_directory = os.path.join(FULL_SESSION_PATH, self.filename + "_" + str(fastener_uuid))
+        os.mkdir(fastener_directory)
 
-        # commence the imaging session with the "start" command
-        time.sleep(1)
-        print(s.write(b"start\n"))
-        s.flush()
-
-        # make a directory to temporarily store the images
-        date = datetime.now().strftime("%d_%m_%y_%h_%m_%s")
-        f = FOLDER_NAME.format(date=date)
-        if not os.path.exists("images"):
-            os.mkdir("images")
-        os.mkdir(f)
-        n = 0
-
-        label_json = self.create_label_json()
-        label_json_path = os.path.join(f, "label.json")
+        label_json = self.create_label_json(fastener_uuid)
+        label_json_path = os.path.join(fastener_directory, "metadata.json")
 
         with open(label_json_path, 'w') as file_obj:
             json.dump(label_json, file_obj)
+        return fastener_directory
 
+    def setup_imaging_directory(self):
+        if not os.path.exists(TOP_IMAGES_FOLDER):
+            os.mkdir(TOP_IMAGES_FOLDER)
 
+        date = datetime.now().strftime("%y_%m_%d_%H_%M_%S")
+        # TODO implement operator name in the GUI
+        operator_name = "KenTodo"
+        session_name = f"img_ses_v{IMAGING_STATION_VERSION}_c{IMAGING_STATION_CONFIGURATION}_{date}_{operator_name}"
+        global FULL_SESSION_PATH
+        FULL_SESSION_PATH = os.path.join(TOP_IMAGES_FOLDER, session_name)
+        os.mkdir(FULL_SESSION_PATH)
+        #TODO populate the txt file with notes from GUI. These contents should get flushed to txt periodically
+        # Imaging Session Report
+        # ===
+        # Imaging Station Version: 1.0
+        # Imaging Station Configuration: 0
+        # Date: October 10, 2023
+        # Start Time: t0
+        # End Time: t1
+        # Operator: Grayson King
+        # Operator Notes:
+        # * Note 1
+        # * Note 2
+        # Other Notes:
+        # * Note 3
+        # * Note 4
+
+    def run(self):
+        global FIRST_TIME_SETUP
+        if FIRST_TIME_SETUP:
+            self.setup_imaging_directory()
+            FIRST_TIME_SETUP = False
+
+        fastener_directory = self.setup_fastener_directory()
+        
         # Calibrate camera before starting camera loop
         print("before")
         self.change_camera_settings.emit(CAMERA, self.top_down_exposure_us, self.top_down_balance_red, self.top_down_balance_blue)
@@ -119,7 +168,15 @@ class CameraWorker(QtCore.QObject):
         print("Waiting for camera settings to finish")
         # Wait 2s for the setup to finish (.emit() is multithreaded)
         time.sleep(2)
+
         print("Starting Loop")
+        n = 0
+        # establish serial communication with Bluepill
+        s = serial.Serial("/dev/ttyUSB0", 115200)
+        # commence the imaging session with the "start" command
+        time.sleep(1)
+        print(s.write(b"start\n"))
+        s.flush()
         while True:
             # Change camera settings AFTER taking top-down shot
             if n == 1 and not side_view_exposure:
@@ -166,7 +223,7 @@ class CameraWorker(QtCore.QObject):
                             self.progress.emit(frame_cv2)
                             print("Done Drawing")
                             final_filename = os.path.join(
-                                f, self.filename + date + "_" + str(n) + ".tiff")
+                                fastener_directory, str(n) + ".tiff")
                             print(final_filename)
                             cv2.imwrite(final_filename, frame_cv2)
                             n += 1
@@ -178,7 +235,7 @@ class CameraWorker(QtCore.QObject):
                     # exit the control loop
                     break
 
-        self.upload.emit(f)
+        self.upload.emit(fastener_directory)
         self.finished.emit()
 
 
@@ -273,8 +330,8 @@ class My_App(QtWidgets.QMainWindow):
         self.washer_height_imperial_double.textChanged.connect(self.assign_height)
         self.WasherTypeGroup.buttonClicked.connect(self.assign_subtype)
 
-        self.upload_single_gdrive_button.clicked.connect(self.upload_single_session_to_gdrive)
-        self.upload_all_gdrive_button.clicked.connect(self.upload_all_sessions_to_gdrive)
+        self.upload_single_fastener_gdrive_button.clicked.connect(self.upload_single_fastener_to_gdrive)
+        self.upload_all_sessions_gdrive_button.clicked.connect(self.upload_all_sessions_to_gdrive)
         self.discard_images_button.clicked.connect(self.redo_imaging)
 
         self.model_helper = ModelHelper("./model_v1_m2vsm3.pt")
@@ -500,7 +557,7 @@ class My_App(QtWidgets.QMainWindow):
 
     def upload_all_sessions_to_gdrive(self):
         # do an upload of all sessions. Will only push files that have changed compared to what's in the cloud.
-        image_directory = PARENT_FOLDER
+        image_directory = TOP_IMAGES_FOLDER
         upload_path = os.path.join(REMOTE_IMAGE_FOLDER)
         print(f"Uploading to Drive. Path: {upload_path}")
         print(f"On-device path: {image_directory}")
@@ -521,7 +578,7 @@ class My_App(QtWidgets.QMainWindow):
         print(f"Upload complete")
         self.DriveUploadConfirmStack.setCurrentIndex(1)
 
-    def upload_single_session_to_gdrive(self):
+    def upload_single_fastener_to_gdrive(self):
         # Split input so the gdrive only has the imaging_test_../ folder,
         # and we don't upload the images/ parent folder too
         image_directory = CURRENT_STAGED_IMAGE_FOLDER

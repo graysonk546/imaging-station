@@ -3361,9 +3361,9 @@
              </widget>
             </item>
             <item row="2" column="0">
-             <widget class="QPushButton" name="upload_single_gdrive_button">
+             <widget class="QPushButton" name="upload_single_fastener_gdrive_button">
               <property name="text">
-               <string>Upload this session ONLY to Google Drive</string>
+               <string>Upload this fastener ONLY to Google Drive</string>
               </property>
              </widget>
             </item>
@@ -3381,7 +3381,7 @@
              </widget>
             </item>
             <item row="2" column="1">
-             <widget class="QPushButton" name="upload_all_gdrive_button">
+             <widget class="QPushButton" name="upload_all_sessions_gdrive_button">
               <property name="text">
                <string>Upload all past sessions to Google Drive</string>
               </property>
@@ -3702,29 +3702,29 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="ScrewDirectionGroup"/>
-  <buttongroup name="WasherTypeGroup"/>
   <buttongroup name="ScrewPitchMetricGroup"/>
-  <buttongroup name="ScrewDiameterImperialGroup"/>
-  <buttongroup name="NutPitchImperialGroup"/>
-  <buttongroup name="ScrewFinishGroup"/>
-  <buttongroup name="ScrewPitchImperialGroup"/>
-  <buttongroup name="NutStandardGroup"/>
-  <buttongroup name="ScrewDriveGroup"/>
-  <buttongroup name="WasherMaterialGroup"/>
-  <buttongroup name="NutDirectionGroup"/>
-  <buttongroup name="NutFinishGroup"/>
-  <buttongroup name="WasherStandardGroup"/>
   <buttongroup name="ScrewHeadGroup"/>
-  <buttongroup name="NutDiameterImperialGroup"/>
-  <buttongroup name="ScrewMaterialGroup"/>
+  <buttongroup name="NutDiameterMetricGroup"/>
   <buttongroup name="ScrewDiameterMetricGroup"/>
+  <buttongroup name="ScrewMaterialGroup"/>
+  <buttongroup name="ScrewDriveGroup"/>
+  <buttongroup name="ScrewDiameterImperialGroup"/>
+  <buttongroup name="ScrewStandardGroup"/>
+  <buttongroup name="NutMaterialGroup"/>
   <buttongroup name="WasherFinishGroup"/>
   <buttongroup name="NutTypeGroup"/>
-  <buttongroup name="NutMaterialGroup"/>
   <buttongroup name="NutPitchMetricGroup"/>
+  <buttongroup name="ScrewPitchImperialGroup"/>
+  <buttongroup name="WasherTypeGroup"/>
+  <buttongroup name="WasherMaterialGroup"/>
+  <buttongroup name="ScrewFinishGroup"/>
+  <buttongroup name="NutDirectionGroup"/>
+  <buttongroup name="ScrewDirectionGroup"/>
+  <buttongroup name="NutDiameterImperialGroup"/>
   <buttongroup name="FastenerTypeGroup"/>
-  <buttongroup name="ScrewStandardGroup"/>
-  <buttongroup name="NutDiameterMetricGroup"/>
+  <buttongroup name="NutFinishGroup"/>
+  <buttongroup name="WasherStandardGroup"/>
+  <buttongroup name="NutStandardGroup"/>
+  <buttongroup name="NutPitchImperialGroup"/>
  </buttongroups>
 </ui>
