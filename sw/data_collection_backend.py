@@ -334,8 +334,8 @@ class My_App(QtWidgets.QMainWindow):
         self.upload_all_sessions_gdrive_button.clicked.connect(self.upload_all_sessions_to_gdrive)
         self.discard_images_button.clicked.connect(self.redo_imaging)
 
-        self.model_helper = ModelHelper("./model_v1_m2vsm3.pt")
-        self.display_helper = DisplayHelper()
+        self.model_helper = None
+        self.display_helper = None
 
     def assign_height(self, height_text):
         self.filename_variables['height'] = height_text
