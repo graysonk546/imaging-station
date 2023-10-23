@@ -81,8 +81,9 @@ class CameraWorker(QtCore.QObject):
         label_json = {
             "uuid": str(unique_id),
             "status": "ok",
-            "imaging_station_version": IMAGING_STATION_VERSION,
-            "imaging_station_configuration": IMAGING_STATION_CONFIGURATION,
+            "world": "real",
+            "platform_version": IMAGING_STATION_VERSION,
+            "platform_configuration": IMAGING_STATION_CONFIGURATION,
             "time": datetime.now().strftime("%d_%m_%y_%h_%m_%s"),
             "fastener_type": self.app.filename_variables["type"].lower(),
             "measurement_system": self.app.filename_variables["standard"].lower(),
@@ -133,11 +134,11 @@ class CameraWorker(QtCore.QObject):
 
     def setup_fastener_directory(self, fastener_uuid):
         # make unique uuid for each fastener that's imaged
-        fastener_directory = os.path.join(FULL_SESSION_PATH, self.filename + "_" + str(fastener_uuid))
+        fastener_directory = os.path.join(FULL_SESSION_PATH, "real_" + self.filename + "_" + str(fastener_uuid))
         os.mkdir(fastener_directory)
 
         label_json = self.create_label_json(fastener_uuid)
-        label_json_path = os.path.join(fastener_directory, "metadata.json")
+        label_json_path = os.path.join(fastener_directory, f"{str(fastener_uuid)}.json")
 
         with open(label_json_path, "w") as file_obj:
             json.dump(label_json, file_obj)
@@ -150,30 +151,37 @@ class CameraWorker(QtCore.QObject):
         date = datetime.now().strftime("%y_%m_%d_%H_%M_%S")
         # TODO implement operator name in the GUI
         operator_name = "KenTodo"
-        session_name = f"img_ses_v{IMAGING_STATION_VERSION}_c{IMAGING_STATION_CONFIGURATION}_{date}_{operator_name}"
+        session_name = f"real_img_ses_v{IMAGING_STATION_VERSION}_c{IMAGING_STATION_CONFIGURATION}_{date}_{operator_name}"
         global FULL_SESSION_PATH
         FULL_SESSION_PATH = os.path.join(TOP_IMAGES_FOLDER, session_name)
         os.mkdir(FULL_SESSION_PATH)
-        #TODO populate the txt file with notes from GUI. These contents should get flushed to txt periodically
-        # Imaging Session Report
-        # ===
-        # Imaging Station Version: 1.0
-        # Imaging Station Configuration: 0
-        # Date: October 10, 2023
-        # Start Time: t0
-        # End Time: t1
-        # Operator: Grayson King
-        # Operator Notes:
-        # * Note 1
-        # * Note 2
-        # Other Notes:
-        # * Note 3
-        # * Note 4
+
+    def create_report_md(self):
+        report_name = "report.md"
+        #TODO be able to write notes into here from GUI. These contents should get flushed to txt periodically.
+        report_string = """# Imaging Session Report
+# ===
+# Imaging Station Version: 1.0
+# Imaging Station Configuration: 0
+# Date: October 10, 2023
+# Start Time: t0
+# End Time: t1
+# Operator: Grayson King
+# Operator Notes:
+# * Note 1
+# * Note 2
+# Other Notes:
+# * Note 3
+# * Note 4
+"""
+        with open(os.path.join(FULL_SESSION_PATH, report_name), "a") as f:
+            f.write(report_string)
 
     def run(self):
         global FIRST_TIME_SETUP
         if FIRST_TIME_SETUP:
             self.setup_imaging_directory()
+            self.create_report_md()
             FIRST_TIME_SETUP = False
         
         fastener_uuid = uuid.uuid4()
@@ -585,6 +593,7 @@ class My_App(QtWidgets.QMainWindow):
         #    `                               '   
 
     def upload_all_sessions_to_gdrive(self):
+        # TODO Multithread this
         # do an upload of all sessions. Will only push files that have changed compared to what's in the cloud.
         image_directory = TOP_IMAGES_FOLDER
         upload_path = os.path.join(REMOTE_IMAGE_FOLDER)
@@ -608,6 +617,7 @@ class My_App(QtWidgets.QMainWindow):
         self.DriveUploadConfirmStack.setCurrentIndex(1)
 
     def upload_single_fastener_to_gdrive(self):
+        # TODO multithread this.
         # Split input so the gdrive only has the imaging_test_../ folder,
         # and we don't upload the images/ parent folder too
         image_directory = CURRENT_STAGED_IMAGE_FOLDER
