@@ -2,6 +2,7 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from python_qt_binding import loadUi
+from fractional_spinbox import CustomDoubleSpinBox
 
 import cv2
 import sys
@@ -9,6 +10,7 @@ import threading
 import time
 import serial
 import json
+import uuid
 
 from vimba import *
 import os
@@ -21,10 +23,18 @@ import torch
 import torchvision.transforms.transforms as T
 from utils import ModelHelper, DisplayHelper
 
-FOLDER_NAME = "images/imaging_test_{date}"
-REMOTE_IMAGE_FOLDER = "gdrive_more_storage:2357\ Screw\ Sorter/Data\ Real"
+# TODO Figure out a better way to move these around ie not globals
+TOP_IMAGES_FOLDER = os.path.join(os.path.dirname(__file__), "images")
+FULL_SESSION_PATH = ""
+REMOTE_IMAGE_FOLDER = "gdrive_more_storage:2357 Screw Sorter/Data Real"
 CURRENT_STAGED_IMAGE_FOLDER = ""
-PARENT_FOLDER = "images"
+IMAGING_STATION_VERSION="1.0"
+IMAGING_STATION_CONFIGURATION="A1"
+FIRST_TIME_SETUP=True
+# TODO Be able to toggle these flags in the GUI, communicate w/ bp
+TOPDOWN_INCLUDED=True
+SIDEON_INCLUDED=True
+NUMBER_SIDEON=9
 
 CAMERA = None
 
@@ -51,36 +61,70 @@ class CameraWorker(QtCore.QObject):
         self.display_helper = display_helper
         self.feed = feed
 
-    def create_label_json(self):
-        unit = "mm" if self.app.filename_variables["standard"] == "Metric" else "\""
-        fastener_type = self.app.filename_variables['type']
-        if fastener_type == "Screw":
-            # TODO finish this spec
-            label_json = {
-                "length": self.app.filename_variables["length"] + unit,
-                "thread_size": self.app.filename_variables["diameter"],
-                "thread_pitch": self.app.filename_variables["pitch"] + unit,
-                "system_of_measurement": self.app.filename_variables["standard"],
-                "head_type": self.app.filename_variables["head"],
-                "drive_style": self.app.filename_variables["drive"],
+    def create_label_json(self, unique_id):
+        """Creates json label for specific imaging run. any variables not entered into the GUI will be `None`."""
+
+        if self.app.filename_variables["standard"].lower() == "metric":
+            dia_units = "mm"
+            len_units = "mm"
+            pitch_units = "mm"
+            ht_units = "mm"
+            wd_units = "mm"
+        elif self.app.filename_variables["standard"].lower() == "inch":
+            # todo refactor dia_units when we introduce (larger) bolts that don't use ANSI
+            dia_units = "ANSI #"
+            len_units = "in"
+            pitch_units = "TPI"
+            ht_units = "in"
+            wd_units = "in"
+            
+        label_json = {
+            "uuid": str(unique_id),
+            "status": "ok",
+            "world": "real",
+            "platform_version": IMAGING_STATION_VERSION,
+            "platform_configuration": IMAGING_STATION_CONFIGURATION,
+            "time": datetime.now().strftime("%d_%m_%y_%h_%m_%s"),
+            "fastener_type": self.app.filename_variables["type"].lower(),
+            "measurement_system": self.app.filename_variables["standard"].lower(),
+            "topdown_included": TOPDOWN_INCLUDED,
+            "sideon_included": SIDEON_INCLUDED,
+            "number_sideon": NUMBER_SIDEON,
+            "attributes":{}
+        }
+        if label_json["fastener_type"] == "screw":
+            attributes = {
+                "length": str(self.app.filename_variables["length"] + " " + len_units),
+                "diameter": str(self.app.filename_variables["diameter"] + " " + dia_units),
+                "pitch": str(self.app.filename_variables["pitch"] + " " + pitch_units),
+                "head": self.app.filename_variables["head"],
+                "drive": self.app.filename_variables["drive"],
+                "direction": self.app.filename_variables["direction"],
+                "material": self.app.filename_variables["material"],
+                "finish": self.app.filename_variables["finish"]
             }
-        elif fastener_type == "Washer":
-            # TODO finish this spec
-            label_json = {
-                "length": self.app.filename_variables["length"] + unit,
-                "system_of_measurement": self.app.filename_variables["standard"],
-                "head_type": self.app.filename_variables["head"],
-                "drive_style": self.app.filename_variables["drive"],
+        elif label_json["fastener_type"] == "washer":
+            attributes = {
+                "height": str(self.app.filename_variables["height"] + " " + ht_units),
+                "inner_diameter": str(self.app.filename_variables["inner_diameter"] + " " + dia_units),
+                "outer_diameter": str(self.app.filename_variables["outer_diameter"] + " " + dia_units),
+                "material": self.app.filename_variables["material"],
+                "finish": self.app.filename_variables["finish"],
+                "subtype": self.app.filename_variables["subtype"]
             }
-        elif fastener_type == "Nut":
+        elif label_json["fastener_type"] == "nut":
             # TODO finish this spec
-            label_json = {
-                "width": self.app.filename_variables["width"],
-                "height": self.app.filename_variables["height"],
-                "thread_size": self.app.filename_variables["diameter"],
-                "thread_pitch": self.app.filename_variables["pitch"] + unit,
-                "system_of_measurement": self.app.filename_variables["standard"],
+            attributes = {
+                "width":str(self.app.filename_variables["width"] + " " + wd_units),
+                "height": str(self.app.filename_variables["height"] + " " + ht_units),
+                "diameter": str(self.app.filename_variables["diameter"] + " " + dia_units),
+                "pitch": str(self.app.filename_variables["pitch"] + " " + pitch_units),
+                "direction": self.app.filename_variables["direction"],
+                "material": self.app.filename_variables["material"],
+                "finish": self.app.filename_variables["finish"],
+                "subtype": self.app.filename_variables["subtype"]
             }
+        label_json["attributes"] = attributes
 
         for k, v in label_json.items():
             if not v:
@@ -88,29 +132,60 @@ class CameraWorker(QtCore.QObject):
 
         return label_json
 
-    def run(self):
-        # establish serial communication with Bluepill
-        s = serial.Serial("/dev/ttyUSB0", 115200)
+    def setup_fastener_directory(self, fastener_uuid):
+        # make unique uuid for each fastener that's imaged
+        fastener_directory = os.path.join(FULL_SESSION_PATH, "real_" + self.filename + "_" + str(fastener_uuid))
+        os.mkdir(fastener_directory)
 
-        # commence the imaging session with the "start" command
-        time.sleep(1)
-        print(s.write(b"start\n"))
-        s.flush()
+        label_json = self.create_label_json(fastener_uuid)
+        label_json_path = os.path.join(fastener_directory, f"{str(fastener_uuid)}.json")
 
-        # make a directory to temporarily store the images
-        date = datetime.now().strftime("%d_%m_%y_%h_%m_%s")
-        f = FOLDER_NAME.format(date=date)
-        if not os.path.exists("images"):
-            os.mkdir("images")
-        os.mkdir(f)
-        n = 0
-
-        label_json = self.create_label_json()
-        label_json_path = os.path.join(f, "label.json")
-
-        with open(label_json_path, 'w') as file_obj:
+        with open(label_json_path, "w") as file_obj:
             json.dump(label_json, file_obj)
+        return fastener_directory
 
+    def setup_imaging_directory(self):
+        if not os.path.exists(TOP_IMAGES_FOLDER):
+            os.mkdir(TOP_IMAGES_FOLDER)
+
+        date = datetime.now().strftime("%y_%m_%d_%H_%M_%S")
+        # TODO implement operator name in the GUI
+        operator_name = "KenTodo"
+        session_name = f"real_img_ses_v{IMAGING_STATION_VERSION}_c{IMAGING_STATION_CONFIGURATION}_{date}_{operator_name}"
+        global FULL_SESSION_PATH
+        FULL_SESSION_PATH = os.path.join(TOP_IMAGES_FOLDER, session_name)
+        os.mkdir(FULL_SESSION_PATH)
+
+    def create_report_md(self):
+        report_name = "report.md"
+        #TODO be able to write notes into here from GUI. These contents should get flushed to txt periodically.
+        report_string = """# Imaging Session Report
+# ===
+# Imaging Station Version: 1.0
+# Imaging Station Configuration: 0
+# Date: October 10, 2023
+# Start Time: t0
+# End Time: t1
+# Operator: Grayson King
+# Operator Notes:
+# * Note 1
+# * Note 2
+# Other Notes:
+# * Note 3
+# * Note 4
+"""
+        with open(os.path.join(FULL_SESSION_PATH, report_name), "a") as f:
+            f.write(report_string)
+
+    def run(self):
+        global FIRST_TIME_SETUP
+        if FIRST_TIME_SETUP:
+            self.setup_imaging_directory()
+            self.create_report_md()
+            FIRST_TIME_SETUP = False
+        
+        fastener_uuid = uuid.uuid4()
+        fastener_directory = self.setup_fastener_directory(fastener_uuid)
 
         # Calibrate camera before starting camera loop
         print("before")
@@ -119,7 +194,15 @@ class CameraWorker(QtCore.QObject):
         print("Waiting for camera settings to finish")
         # Wait 2s for the setup to finish (.emit() is multithreaded)
         time.sleep(2)
+
         print("Starting Loop")
+        n = 0
+        # establish serial communication with Bluepill
+        s = serial.Serial("/dev/ttyUSB0", 115200)
+        # commence the imaging session with the "start" command
+        time.sleep(1)
+        print(s.write(b"start\n"))
+        s.flush()
         while True:
             # Change camera settings AFTER taking top-down shot
             if n == 1 and not side_view_exposure:
@@ -166,7 +249,7 @@ class CameraWorker(QtCore.QObject):
                             self.progress.emit(frame_cv2)
                             print("Done Drawing")
                             final_filename = os.path.join(
-                                f, self.filename + date + "_" + str(n) + ".tiff")
+                                fastener_directory, f"{n}_{fastener_uuid}.tiff")
                             print(final_filename)
                             cv2.imwrite(final_filename, frame_cv2)
                             n += 1
@@ -178,7 +261,7 @@ class CameraWorker(QtCore.QObject):
                     # exit the control loop
                     break
 
-        self.upload.emit(f)
+        self.upload.emit(fastener_directory)
         self.finished.emit()
 
 
@@ -187,11 +270,15 @@ class My_App(QtWidgets.QMainWindow):
         super(My_App, self).__init__()
         loadUi("./data_collection.ui", self)
 
+        # Dynamically create certain custom widgets and add it to layout (PyQtDesigner can't put it in natively)
+        self.screw_length_imperial_double = CustomDoubleSpinBox()
+        self.horizontalLayout_25.addWidget(self.screw_length_imperial_double)
+
         # Obtaining camera and applying default settings
         with Vimba.get_instance() as vimba:
             cams = vimba.get_all_cameras()
         if not cams:
-            raise Exception('No Cameras accessible. Abort.')
+            raise Exception("No Cameras accessible. Abort.")
         self.cam = cams[0]
         global CAMERA
         CAMERA = self.cam
@@ -199,22 +286,22 @@ class My_App(QtWidgets.QMainWindow):
 
         # The order of fields put in here determines the order in the filename.
         self.filename_variables = OrderedDict()
-        self.filename_variables['type'] = None
-        self.filename_variables['standard'] = None
-        self.filename_variables['subtype'] = None
-        self.filename_variables['diameter'] = None
-        self.filename_variables['pitch'] = None
-        self.filename_variables['length'] = None
-        self.filename_variables['width'] = None
-        self.filename_variables['inner_diameter'] = None
-        self.filename_variables['outer_diameter'] = None
-        self.filename_variables['height'] = None
-        self.filename_variables['head'] = None
-        self.filename_variables['drive'] = None
-        self.filename_variables['direction'] = None
-        self.filename_variables['material'] = None
-        self.filename_variables['finish'] = None
-        self.filename_variables[''] = None
+        self.filename_variables["type"] = None
+        self.filename_variables["standard"] = None
+        self.filename_variables["subtype"] = None
+        self.filename_variables["diameter"] = None
+        self.filename_variables["pitch"] = None
+        self.filename_variables["length"] = None
+        self.filename_variables["width"] = None
+        self.filename_variables["inner_diameter"] = None
+        self.filename_variables["outer_diameter"] = None
+        self.filename_variables["height"] = None
+        self.filename_variables["head"] = None
+        self.filename_variables["drive"] = None
+        self.filename_variables["direction"] = None
+        self.filename_variables["material"] = None
+        self.filename_variables["finish"] = None
+        self.filename_variables[""] = None
 
         self.activate_camera_feed.clicked.connect(
             self.start_feed_thread
@@ -273,27 +360,27 @@ class My_App(QtWidgets.QMainWindow):
         self.washer_height_imperial_double.textChanged.connect(self.assign_height)
         self.WasherTypeGroup.buttonClicked.connect(self.assign_subtype)
 
-        self.upload_single_gdrive_button.clicked.connect(self.upload_single_session_to_gdrive)
-        self.upload_all_gdrive_button.clicked.connect(self.upload_all_sessions_to_gdrive)
+        self.upload_single_fastener_gdrive_button.clicked.connect(self.upload_single_fastener_to_gdrive)
+        self.upload_all_sessions_gdrive_button.clicked.connect(self.upload_all_sessions_to_gdrive)
         self.discard_images_button.clicked.connect(self.redo_imaging)
 
-        self.model_helper = ModelHelper("./model_v1_m2vsm3.pt")
-        self.display_helper = DisplayHelper()
+        self.model_helper = None
+        self.display_helper = None
 
     def assign_height(self, height_text):
-        self.filename_variables['height'] = height_text
+        self.filename_variables["height"] = height_text
         self.update_fastener_filename()
 
     def assign_width(self, width_text):
-        self.filename_variables['width'] = width_text
+        self.filename_variables["width"] = width_text
         self.update_fastener_filename()
 
     def assign_drive(self, pressed_button):
-        self.filename_variables['drive'] = pressed_button.text()
+        self.filename_variables["drive"] = pressed_button.text()
         self.update_fastener_filename()
 
     def assign_pitch(self, pressed_button):
-        self.filename_variables['pitch'] = pressed_button.text()
+        self.filename_variables["pitch"] = pressed_button.text()
         self.update_fastener_filename()
 
     def change_nut_standard_stack(self, pressed_button):
@@ -308,13 +395,13 @@ class My_App(QtWidgets.QMainWindow):
                 self.nut_standard_stack.setCurrentIndex(2)
                 changed_index = True
 
-        self.filename_variables['standard'] = pressed_button.text()
+        self.filename_variables["standard"] = pressed_button.text()
        # Clear data fields of stack
         if changed_index:
-            self.filename_variables['width'] = None
-            self.filename_variables['height'] = None
-            self.filename_variables['diameter'] = None
-            self.filename_variables['pitch'] = None
+            self.filename_variables["width"] = None
+            self.filename_variables["height"] = None
+            self.filename_variables["diameter"] = None
+            self.filename_variables["pitch"] = None
 
         self.update_fastener_filename()
 
@@ -330,33 +417,33 @@ class My_App(QtWidgets.QMainWindow):
                 self.screw_standard_stack.setCurrentIndex(2)
                 changed_index = True
         
-        self.filename_variables['standard'] = pressed_button.text()
+        self.filename_variables["standard"] = pressed_button.text()
         # Clear data fields of stack
         if changed_index:
-            self.filename_variables['length'] = None
-            self.filename_variables['diameter'] = None
-            self.filename_variables['pitch'] = None
+            self.filename_variables["length"] = None
+            self.filename_variables["diameter"] = None
+            self.filename_variables["pitch"] = None
 
         self.update_fastener_filename()
 
     def assign_direction(self, pressed_button):
-        self.filename_variables['direction'] = pressed_button.text()
+        self.filename_variables["direction"] = pressed_button.text()
         self.update_fastener_filename()
 
     def assign_finish(self, pressed_button):
-        self.filename_variables['finish'] = pressed_button.text()
+        self.filename_variables["finish"] = pressed_button.text()
         self.update_fastener_filename()
 
     def assign_inner_diameter(self, inner_diameter_text):
-        self.filename_variables['inner_diameter'] = inner_diameter_text
+        self.filename_variables["inner_diameter"] = inner_diameter_text
         self.update_fastener_filename()
 
     def assign_material(self, pressed_button):
-        self.filename_variables['material'] = pressed_button.text()
+        self.filename_variables["material"] = pressed_button.text()
         self.update_fastener_filename()
 
     def assign_outer_diameter(self, outer_diameter_text):
-        self.filename_variables['outer_diameter'] = outer_diameter_text
+        self.filename_variables["outer_diameter"] = outer_diameter_text
         self.update_fastener_filename()
 
     def change_washer_standard_stack(self, pressed_button):
@@ -371,12 +458,12 @@ class My_App(QtWidgets.QMainWindow):
                 self.washer_standard_stack.setCurrentIndex(2)
                 changed_index = True
 
-        self.filename_variables['standard'] = pressed_button.text()
+        self.filename_variables["standard"] = pressed_button.text()
         # Clear data fields of stack
         if changed_index:
-            self.filename_variables['inner_diameter'] = None
-            self.filename_variables['outer_diameter'] = None
-            self.filename_variables['height'] = None
+            self.filename_variables["inner_diameter"] = None
+            self.filename_variables["outer_diameter"] = None
+            self.filename_variables["height"] = None
 
         self.update_fastener_filename()
 
@@ -390,40 +477,47 @@ class My_App(QtWidgets.QMainWindow):
         self.update_fastener_filename()
 
     def assign_fastener_type(self, pressed_button):
-        self.filename_variables['type'] = pressed_button.text()
+        self.filename_variables["type"] = pressed_button.text()
         self.update_fastener_filename()
 
     def assign_subtype(self, pressed_button):
-        self.filename_variables['subtype'] = pressed_button.text()
+        self.filename_variables["subtype"] = pressed_button.text()
         self.update_fastener_filename()
 
     def assign_diameter(self, pressed_button):
-        self.filename_variables['diameter'] = pressed_button.text()
+        self.filename_variables["diameter"] = pressed_button.text()
         self.update_fastener_filename()
 
     def assign_length(self, length_text):
-        self.filename_variables['length'] = length_text
+        self.filename_variables["length"] = length_text
         self.update_fastener_filename()
 
     def assign_head(self, pressed_button):
-        self.filename_variables['head'] = pressed_button.text()
+        self.filename_variables["head"] = pressed_button.text()
         self.update_fastener_filename()
 
     def update_fastener_filename(self):
         current_name = ""
         for key, val in self.filename_variables.items():
-            if type(val) is str:
-                current_name += val + "_"
+            if val is not None:
+                # attempt conversion to string
+                try:
+                    str_val = str(val)
+                    # strip out slash from fraction
+                    str_val = str_val.replace("/", "_")
+                    current_name += str_val + "_"
+                except TypeError:
+                    pass
         self.fastener_filename.setText(current_name)
 
     def reset_filename_variables_when_changing_fastener(self, pressed_button):
         text = pressed_button.text()
-        if self.filename_variables['type'] == text:
+        if self.filename_variables["type"] == text:
             # effect of clicking on the same button
             return
         else:
             self.reset_filename_variables()
-            self.filename_variables['type'] = text
+            self.filename_variables["type"] = text
             self.fastener_filename.setText(text)
 
     def start_feed_thread(self):
@@ -499,8 +593,9 @@ class My_App(QtWidgets.QMainWindow):
         #    `                               '   
 
     def upload_all_sessions_to_gdrive(self):
+        # TODO Multithread this
         # do an upload of all sessions. Will only push files that have changed compared to what's in the cloud.
-        image_directory = PARENT_FOLDER
+        image_directory = TOP_IMAGES_FOLDER
         upload_path = os.path.join(REMOTE_IMAGE_FOLDER)
         print(f"Uploading to Drive. Path: {upload_path}")
         print(f"On-device path: {image_directory}")
@@ -521,12 +616,14 @@ class My_App(QtWidgets.QMainWindow):
         print(f"Upload complete")
         self.DriveUploadConfirmStack.setCurrentIndex(1)
 
-    def upload_single_session_to_gdrive(self):
+    def upload_single_fastener_to_gdrive(self):
+        # TODO multithread this.
         # Split input so the gdrive only has the imaging_test_../ folder,
         # and we don't upload the images/ parent folder too
         image_directory = CURRENT_STAGED_IMAGE_FOLDER
+        session_folder = os.path.split(FULL_SESSION_PATH)[-1]
         lowest_level_folder = os.path.split(image_directory)[-1]
-        upload_path = os.path.join(REMOTE_IMAGE_FOLDER, lowest_level_folder)
+        upload_path = os.path.join(REMOTE_IMAGE_FOLDER, session_folder, lowest_level_folder)
         print(f"Uploading to Drive. Path: {upload_path}")
         print(f"On-device path: {image_directory}")
         try:
@@ -563,10 +660,10 @@ class My_App(QtWidgets.QMainWindow):
                     print("exposure")
                     # If exposure_us is set, manually change exposure value
                     if isinstance(exposure_us, int):
-                        cam.ExposureAuto.set('Off')
+                        cam.ExposureAuto.set("Off")
                         cam.ExposureTime.set(exposure_us)
                     else:
-                        cam.ExposureAuto.set('Continuous')
+                        cam.ExposureAuto.set("Continuous")
 
                 except (AttributeError, VimbaFeatureError) as e:
                     print("error:" + str(e))
@@ -577,15 +674,15 @@ class My_App(QtWidgets.QMainWindow):
                     print("balance")
                     # If balance is set, manually change white balance value
                     if isinstance(balance_red, float):
-                        cam.BalanceWhiteAuto.set('Off')
-                        cam.BalanceRatioSelector.set('Red')
+                        cam.BalanceWhiteAuto.set("Off")
+                        cam.BalanceRatioSelector.set("Red")
                         cam.BalanceRatio.set(balance_red)
                     if isinstance(balance_blue, float):
-                        cam.BalanceWhiteAuto.set('Off')
-                        cam.BalanceRatioSelector.set('Blue')
+                        cam.BalanceWhiteAuto.set("Off")
+                        cam.BalanceRatioSelector.set("Blue")
                         cam.BalanceRatio.set(balance_blue)
                     else:
-                        cam.BalanceWhiteAuto.set('Continuous')
+                        cam.BalanceWhiteAuto.set("Continuous")
 
                 except (AttributeError, VimbaFeatureError):
                     pass
@@ -618,7 +715,7 @@ class My_App(QtWidgets.QMainWindow):
 
                     else:
                         raise Exception(
-                            'Camera does not support a OpenCV compatible format natively.')
+                            "Camera does not support a OpenCV compatible format natively.")
 
     def draw_image_on_gui(self, frame):
         resized_photo = self.resize_cv_photo(frame, 20)

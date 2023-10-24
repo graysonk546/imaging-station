@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1831</width>
+    <width>1798</width>
     <height>931</height>
    </rect>
   </property>
@@ -694,20 +694,9 @@
                 <item row="2" column="0" colspan="4">
                  <widget class="QGroupBox" name="screw_length_imperial">
                   <property name="title">
-                   <string>Length (Inch)</string>
+                   <string>Length (Inch rounded to nearest 1/32)</string>
                   </property>
-                  <layout class="QHBoxLayout" name="horizontalLayout_25">
-                   <item>
-                    <widget class="QDoubleSpinBox" name="screw_length_imperial_double">
-                     <property name="decimals">
-                      <number>3</number>
-                     </property>
-                     <property name="singleStep">
-                      <double>0.050000000000000</double>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
+                  <layout class="QHBoxLayout" name="horizontalLayout_25"/>
                  </widget>
                 </item>
                </layout>
@@ -2233,63 +2222,10 @@
                    <string>Diameter (ANSI #)</string>
                   </property>
                   <layout class="QGridLayout" name="gridLayout_38">
-                   <item row="0" column="3">
-                    <widget class="QPushButton" name="pushButton_557">
-                     <property name="text">
-                      <string>3</string>
-                     </property>
-                     <attribute name="buttonGroup">
-                      <string notr="true">NutDiameterImperialGroup</string>
-                     </attribute>
-                    </widget>
-                   </item>
                    <item row="0" column="4">
                     <widget class="QPushButton" name="pushButton_558">
                      <property name="text">
                       <string>4</string>
-                     </property>
-                     <attribute name="buttonGroup">
-                      <string notr="true">NutDiameterImperialGroup</string>
-                     </attribute>
-                    </widget>
-                   </item>
-                   <item row="0" column="0">
-                    <widget class="QPushButton" name="pushButton_554">
-                     <property name="text">
-                      <string>0</string>
-                     </property>
-                     <attribute name="buttonGroup">
-                      <string notr="true">NutDiameterImperialGroup</string>
-                     </attribute>
-                    </widget>
-                   </item>
-                   <item row="0" column="2">
-                    <widget class="QPushButton" name="pushButton_556">
-                     <property name="text">
-                      <string>2</string>
-                     </property>
-                     <attribute name="buttonGroup">
-                      <string notr="true">NutDiameterImperialGroup</string>
-                     </attribute>
-                    </widget>
-                   </item>
-                   <item row="0" column="1">
-                    <widget class="QPushButton" name="pushButton_555">
-                     <property name="text">
-                      <string>1</string>
-                     </property>
-                     <property name="checkable">
-                      <bool>true</bool>
-                     </property>
-                     <attribute name="buttonGroup">
-                      <string notr="true">NutDiameterImperialGroup</string>
-                     </attribute>
-                    </widget>
-                   </item>
-                   <item row="1" column="0">
-                    <widget class="QPushButton" name="pushButton_559">
-                     <property name="text">
-                      <string>5</string>
                      </property>
                      <attribute name="buttonGroup">
                       <string notr="true">NutDiameterImperialGroup</string>
@@ -2309,10 +2245,10 @@
                      </attribute>
                     </widget>
                    </item>
-                   <item row="1" column="2">
-                    <widget class="QPushButton" name="pushButton_561">
+                   <item row="0" column="3">
+                    <widget class="QPushButton" name="pushButton_557">
                      <property name="text">
-                      <string>8</string>
+                      <string>3</string>
                      </property>
                      <attribute name="buttonGroup">
                       <string notr="true">NutDiameterImperialGroup</string>
@@ -2329,6 +2265,39 @@
                      </attribute>
                     </widget>
                    </item>
+                   <item row="0" column="2">
+                    <widget class="QPushButton" name="pushButton_556">
+                     <property name="text">
+                      <string>2</string>
+                     </property>
+                     <attribute name="buttonGroup">
+                      <string notr="true">NutDiameterImperialGroup</string>
+                     </attribute>
+                    </widget>
+                   </item>
+                   <item row="1" column="0">
+                    <widget class="QPushButton" name="pushButton_559">
+                     <property name="text">
+                      <string>5</string>
+                     </property>
+                     <attribute name="buttonGroup">
+                      <string notr="true">NutDiameterImperialGroup</string>
+                     </attribute>
+                    </widget>
+                   </item>
+                   <item row="0" column="1">
+                    <widget class="QPushButton" name="pushButton_555">
+                     <property name="text">
+                      <string>1</string>
+                     </property>
+                     <property name="checkable">
+                      <bool>true</bool>
+                     </property>
+                     <attribute name="buttonGroup">
+                      <string notr="true">NutDiameterImperialGroup</string>
+                     </attribute>
+                    </widget>
+                   </item>
                    <item row="1" column="4">
                     <widget class="QPushButton" name="pushButton_563">
                      <property name="text">
@@ -2338,6 +2307,29 @@
                       <string notr="true">NutDiameterImperialGroup</string>
                      </attribute>
                     </widget>
+                   </item>
+                   <item row="0" column="0">
+                    <widget class="QPushButton" name="pushButton_554">
+                     <property name="text">
+                      <string>0</string>
+                     </property>
+                     <attribute name="buttonGroup">
+                      <string notr="true">NutDiameterImperialGroup</string>
+                     </attribute>
+                    </widget>
+                   </item>
+                   <item row="1" column="2">
+                    <widget class="QPushButton" name="pushButton_561">
+                     <property name="text">
+                      <string>8</string>
+                     </property>
+                     <attribute name="buttonGroup">
+                      <string notr="true">NutDiameterImperialGroup</string>
+                     </attribute>
+                    </widget>
+                   </item>
+                   <item row="2" column="1">
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox"/>
                    </item>
                   </layout>
                  </widget>
@@ -3361,9 +3353,9 @@
              </widget>
             </item>
             <item row="2" column="0">
-             <widget class="QPushButton" name="upload_single_gdrive_button">
+             <widget class="QPushButton" name="upload_single_fastener_gdrive_button">
               <property name="text">
-               <string>Upload this session ONLY to Google Drive</string>
+               <string>Upload this fastener ONLY to Google Drive</string>
               </property>
              </widget>
             </item>
@@ -3381,7 +3373,7 @@
              </widget>
             </item>
             <item row="2" column="1">
-             <widget class="QPushButton" name="upload_all_gdrive_button">
+             <widget class="QPushButton" name="upload_all_sessions_gdrive_button">
               <property name="text">
                <string>Upload all past sessions to Google Drive</string>
               </property>
@@ -3692,7 +3684,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1831</width>
+     <width>1798</width>
      <height>20</height>
     </rect>
    </property>
@@ -3702,29 +3694,29 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="ScrewDirectionGroup"/>
-  <buttongroup name="WasherTypeGroup"/>
-  <buttongroup name="ScrewPitchMetricGroup"/>
-  <buttongroup name="ScrewDiameterImperialGroup"/>
-  <buttongroup name="NutPitchImperialGroup"/>
-  <buttongroup name="ScrewFinishGroup"/>
-  <buttongroup name="ScrewPitchImperialGroup"/>
-  <buttongroup name="NutStandardGroup"/>
-  <buttongroup name="ScrewDriveGroup"/>
   <buttongroup name="WasherMaterialGroup"/>
-  <buttongroup name="NutDirectionGroup"/>
+  <buttongroup name="NutPitchImperialGroup"/>
+  <buttongroup name="NutMaterialGroup"/>
+  <buttongroup name="ScrewDirectionGroup"/>
+  <buttongroup name="NutTypeGroup"/>
+  <buttongroup name="ScrewDiameterImperialGroup"/>
   <buttongroup name="NutFinishGroup"/>
-  <buttongroup name="WasherStandardGroup"/>
   <buttongroup name="ScrewHeadGroup"/>
+  <buttongroup name="NutStandardGroup"/>
+  <buttongroup name="NutPitchMetricGroup"/>
+  <buttongroup name="NutDirectionGroup"/>
+  <buttongroup name="ScrewDriveGroup"/>
+  <buttongroup name="ScrewPitchImperialGroup"/>
+  <buttongroup name="ScrewStandardGroup"/>
+  <buttongroup name="ScrewPitchMetricGroup"/>
+  <buttongroup name="FastenerTypeGroup"/>
   <buttongroup name="NutDiameterImperialGroup"/>
   <buttongroup name="ScrewMaterialGroup"/>
-  <buttongroup name="ScrewDiameterMetricGroup"/>
+  <buttongroup name="ScrewFinishGroup"/>
   <buttongroup name="WasherFinishGroup"/>
-  <buttongroup name="NutTypeGroup"/>
-  <buttongroup name="NutMaterialGroup"/>
-  <buttongroup name="NutPitchMetricGroup"/>
-  <buttongroup name="FastenerTypeGroup"/>
-  <buttongroup name="ScrewStandardGroup"/>
   <buttongroup name="NutDiameterMetricGroup"/>
+  <buttongroup name="WasherStandardGroup"/>
+  <buttongroup name="ScrewDiameterMetricGroup"/>
+  <buttongroup name="WasherTypeGroup"/>
  </buttongroups>
 </ui>
