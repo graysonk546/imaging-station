@@ -84,7 +84,7 @@ class CameraWorker(QtCore.QObject):
             "world": "real",
             "platform_version": IMAGING_STATION_VERSION,
             "platform_configuration": IMAGING_STATION_CONFIGURATION,
-            "time": datetime.now().strftime("%d_%m_%y_%h_%m_%s"),
+            "time": datetime.now().strftime("%s"),
             "fastener_type": self.app.filename_variables["type"].lower(),
             "measurement_system": self.app.filename_variables["standard"].lower(),
             "topdown_included": TOPDOWN_INCLUDED,
@@ -94,35 +94,35 @@ class CameraWorker(QtCore.QObject):
         }
         if label_json["fastener_type"] == "screw":
             attributes = {
-                "length": str(self.app.filename_variables["length"] + " " + len_units),
-                "diameter": str(self.app.filename_variables["diameter"] + " " + dia_units),
-                "pitch": str(self.app.filename_variables["pitch"] + " " + pitch_units),
-                "head": self.app.filename_variables["head"],
-                "drive": self.app.filename_variables["drive"],
-                "direction": self.app.filename_variables["direction"],
-                "material": self.app.filename_variables["material"],
-                "finish": self.app.filename_variables["finish"]
+                "length": str(self.app.filename_variables["length"]) + " " + len_units,
+                "diameter": str(self.app.filename_variables["diameter"]) + " " + dia_units,
+                "pitch": str(self.app.filename_variables["pitch"]) + " " + pitch_units,
+                "head": self.app.filename_variables["head"].lower(),
+                "drive": self.app.filename_variables["drive"].lower(),
+                "direction": self.app.filename_variables["direction"].lower(),
+                "material": self.app.filename_variables["material"].lower(),
+                "finish": self.app.filename_variables["finish"].lower()
             }
         elif label_json["fastener_type"] == "washer":
             attributes = {
-                "height": str(self.app.filename_variables["height"] + " " + ht_units),
-                "inner_diameter": str(self.app.filename_variables["inner_diameter"] + " " + dia_units),
-                "outer_diameter": str(self.app.filename_variables["outer_diameter"] + " " + dia_units),
-                "material": self.app.filename_variables["material"],
-                "finish": self.app.filename_variables["finish"],
-                "subtype": self.app.filename_variables["subtype"]
+                "height": str(self.app.filename_variables["height"]) + " " + ht_units,
+                "inner_diameter": str(self.app.filename_variables["inner_diameter"]) + " " + dia_units,
+                "outer_diameter": str(self.app.filename_variables["outer_diameter"]) + " " + dia_units,
+                "material": self.app.filename_variables["material"].lower(),
+                "finish": self.app.filename_variables["finish"].lower(),
+                "subtype": self.app.filename_variables["subtype"].lower()
             }
         elif label_json["fastener_type"] == "nut":
             # TODO finish this spec
             attributes = {
-                "width":str(self.app.filename_variables["width"] + " " + wd_units),
-                "height": str(self.app.filename_variables["height"] + " " + ht_units),
-                "diameter": str(self.app.filename_variables["diameter"] + " " + dia_units),
-                "pitch": str(self.app.filename_variables["pitch"] + " " + pitch_units),
-                "direction": self.app.filename_variables["direction"],
-                "material": self.app.filename_variables["material"],
-                "finish": self.app.filename_variables["finish"],
-                "subtype": self.app.filename_variables["subtype"]
+                "width":str(self.app.filename_variables["width"]) + " " + wd_units,
+                "height": str(self.app.filename_variables["height"]) + " " + ht_units,
+                "diameter": str(self.app.filename_variables["diameter"]) + " " + dia_units,
+                "pitch": str(self.app.filename_variables["pitch"]) + " " + pitch_units,
+                "direction": self.app.filename_variables["direction"].lower(),
+                "material": self.app.filename_variables["material"].lower(),
+                "finish": self.app.filename_variables["finish"].lower(),
+                "subtype": self.app.filename_variables["subtype"].lower()
             }
         label_json["attributes"] = attributes
 
