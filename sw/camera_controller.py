@@ -32,7 +32,6 @@ def setup_camera(cam: Camera):
                 pass
         except (AttributeError, VimbaFeatureError):
             pass
-
         # Query available, open_cv compatible pixel formats
         # prefer color formats over monochrome formats
         cv_fmts = intersect_pixel_formats(cam.get_pixel_formats(),
