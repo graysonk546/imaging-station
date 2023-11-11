@@ -2,7 +2,9 @@
 *                               Standard Libraries
 *******************************************************************************/
 
+#include <Arduino.h>
 #include "serial.h"
+#include "command-listing.h"
 
 /*******************************************************************************
 *                               Header Files
@@ -33,6 +35,9 @@
 //     .index = 0
 // };
 
+
+static char* args[COMMAND_ARGS_MAX_LEN];
+static char* tokCommand[(COMMAND_ARGS_MAX_LEN + 1)];
 
 
 HardwareSerial Serial2(USART2);
@@ -126,6 +131,82 @@ void serial_echo(serial_id_t serialId)
         i++;
     }
     s->connection->print(CMD_EOL);
+}
+
+void serial_parseCmd(char* message)
+{
+    // Tokenize the line with spaces as the delimiter
+    char* tok = (char*) strtok(message, " ");
+    uint8_t i = 0;
+    while (tok != NULL && i < COMMAND_BUFF_MAX_LEN)
+    {
+        tokCommand[i] = tok;
+        tok = strtok(NULL, " ");
+        i++;
+    }
+
+    // Find a match for the command entered
+    uint8_t j = 0;
+    while (strcmp(commandArr[j].command, LIST_TERMINATOR) != 0)
+    {
+        if (strcmp(commandArr[j].command, tokCommand[0]) == 0)
+        {
+            break;
+        }
+        j++;
+    }
+
+    // Process the command entered
+    if (strcmp(message, "") != 0)
+    {
+        if (strcmp(commandArr[j].command, LIST_TERMINATOR) == 0)
+        {
+            Serial.println("invalid command");
+        }
+        else if ((i - 1) > commandArr[j].maxParam)
+        {
+            Serial.println("too many args");
+        }
+        else if ((i - 1) < commandArr[j].minParam)
+        {
+            Serial.println("too few args");
+        }
+        else
+        {
+            // Package the args into a char* array
+            for (uint8_t k = 1; k < i; k++)
+            {
+                args[(k - 1)] = tokCommand[k];
+            }
+
+            // Call the function corresponding to the comannd with args
+            cli_func_t func = commandArr[j].function;
+            func(i, args);
+
+            // Don't know why there was an if else here
+            // if (j == 0)
+            // {
+            //     // Call the function corresponding to the command with no args
+            //     cli_func_t func = commandArr[j].function;
+            //     func (0, NULL);
+            // }
+            // else
+            // {
+            //     // Package the args into a char* array
+            //     for (uint8_t k = 1; k < i; k++)
+            //     {
+            //         args[(k - 1)] = tokCommand[k];
+            //     }
+
+            //     // Call the function corresponding to the comannd with args
+            //     cli_func_t func = commandArr[j].function;
+            //     func(i, args);
+            // }
+        }
+    }
+    // reset the args and command arrays
+    memset(tokCommand, '\0', sizeof(tokCommand));
+    memset(args, '\0', sizeof(args));
 }
 
 char* serial_getMessage(serial_id_t serialId)

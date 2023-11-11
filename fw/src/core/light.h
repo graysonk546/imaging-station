@@ -10,7 +10,7 @@ typedef enum {
     BACK_OFF = 0,
     BACK_ON = 5,
     DOME_OFF = 100,
-    DOME_ON = 80
+    DOME_ON = 50
 } brightness_map_t;
 
 typedef struct

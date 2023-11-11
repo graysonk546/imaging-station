@@ -23,6 +23,7 @@
 #define STRING_EOL           '\0'
 #define COMMAND_BUFF_MAX_LEN 30
 #define COMMAND_ARGS_MAX_LEN 4
+#define COMMAND_PROMPT       "station> "
 
 /*******************************************************************************
 *                               Structures
@@ -64,6 +65,8 @@ void serial_send(serial_id_t serialId, char* bytes);
 bool serial_handleByte(serial_id_t serialId, char byte);
 
 void serial_echo(serial_id_t serialId);
+
+void serial_parseCmd(char* message);
 
 char* serial_getMessage(serial_id_t serialId);
 

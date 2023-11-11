@@ -12,6 +12,7 @@ void setup()
 
     // initilize the servo and stepper motor
     servo_init(ARM, PB1);
+    
     stepper_setSpeed(PLANE, 100);
 
     // enable pin of stepper
@@ -23,8 +24,11 @@ void setup()
     light_init(BACK);
 
     // A0 back light (OFF Duty Cycle 0%)
+    // 118042us exposure for back-light
 
     // A1 dome light (OFF Duty Cycle 100%)
+    // 57482us
+
 
     // pinMode(PB1, OUTPUT);
     // pwm_start(PB_1, 50, 12, TimerCompareFormat_t::PERCENT_COMPARE_FORMAT); // 2 -> 12 rotates arm down (range 2-13)
@@ -43,6 +47,24 @@ static state_t state = WAIT_ON_RPI;
 
 static char picMessage[] = "picture";
 
+// #define DEBUG
+
+#ifdef DEBUG
+void loop()
+{
+    // wait until there is serial data
+    if (serial_available(COMPUTER))
+    {
+        if (serial_handleByte(COMPUTER, serial_read(COMPUTER)))
+        {
+            serial_echo(COMPUTER);
+            char* m = serial_getMessage(COMPUTER);
+            serial_parseCmd(m);
+            Serial.print(COMMAND_PROMPT);
+        }
+    }    
+}
+#else
 void loop() 
 {
     // main control loop switch statement
@@ -54,7 +76,7 @@ void loop()
             // debug message
             serial_send(COMPUTER, "rotating arm down");
             // rotate arm update arm position
-            servo_rotateTo(ARM, 156); // 156
+            servo_rotateTo(ARM, 160); // 156
             // turn on the dome light
             light_update(DOME, DOME_ON);
             state = TAKE_PIC;
@@ -144,3 +166,4 @@ void loop()
             break;
     }
 }
+#endif
