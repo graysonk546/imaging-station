@@ -38,6 +38,30 @@ NUMBER_SIDEON=9
 
 CAMERA = None
 
+class IntroDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+
+        self.initUI()
+
+    def initUI(self):
+        # Create widgets for the dialog
+        label = QLabel("Enter your name:")
+        self.operator_name = QLineEdit(self)
+        ok_button = QPushButton("OK", self)
+        ok_button.clicked.connect(self.accept)
+
+        # Create layout for the dialog
+        layout = QVBoxLayout()
+        layout.addWidget(label)
+        layout.addWidget(self.operator_name)
+        layout.addWidget(ok_button)
+
+        # Set the layout for the dialog
+        self.setLayout(layout)
+
+    def getUsername(self):
+        return self.operator_name.text()
 
 class CameraWorker(QtCore.QObject):
     upload = QtCore.pyqtSignal(str)
@@ -146,7 +170,7 @@ class CameraWorker(QtCore.QObject):
             json.dump(label_json, file_obj)
         return fastener_directory
 
-     def run(self):
+    def run(self):
         # Create UUID corresponding to this specific run of fasteners.
         fastener_uuid = uuid.uuid4()
         fastener_directory = self.setup_fastener_directory(fastener_uuid)
@@ -230,7 +254,7 @@ class CameraWorker(QtCore.QObject):
 
 
 class My_App(QtWidgets.QMainWindow):
-    def __init__(self):
+    def __init__(self, operator_name):
         super(My_App, self).__init__()
         loadUi("./data_collection.ui", self)
 
@@ -240,8 +264,16 @@ class My_App(QtWidgets.QMainWindow):
 
         # Set the date for this session
         self.session_date = datetime.datetime.now()
-        self.setup_imaging_directory(self.session_date)
-        self.create_report_md()
+        if operator_name == "":
+            QMessageBox.warning(self, "Missing Operator Name", "Please fill out the operator name before you begin imaging.")
+            # set tab to operator input tab
+            raise Exception("Operator name string is empty. Please fill out the box with alphabetical letters before continuing.")
+        self.setup_imaging_directory(self.session_date, operator_name)
+        self.fastener_record = []
+
+        # Setup quit function. Note this function should be declared after session_date and imaging_directory is made.
+        QtWidgets.QApplication.instance().aboutToQuit.connect(self.cleanupFunction)
+
         # Obtaining camera and applying default settings
         with Vimba.get_instance() as vimba:
             cams = vimba.get_all_cameras()
@@ -464,15 +496,18 @@ class My_App(QtWidgets.QMainWindow):
         self.filename_variables["head"] = pressed_button.text()
         self.update_fastener_filename()
 
-    def setup_imaging_directory(self, creation_date):
+    def cleanupFunction(self):
+        print("Performing cleanup operations...")
+        ending_time = datetime.datetime.now()
+        self.create_report_md(ending_time)
+
+    def setup_imaging_directory(self, creation_date, operator_name):
         if not os.path.exists(TOP_IMAGES_FOLDER):
             os.mkdir(TOP_IMAGES_FOLDER)
 
         date = creation_date.strftime("%y_%m_%d_%H_%M_%S")
-        # TODO implement operator name in the GUI
-        operator_name = self.operator_input.text()
-        # replace all bad filename characters with underscores
-        operator_name = self.sanitize_filename(operator_name)
+        
+        # replace all potential bad filename characters with underscores
 
         session_name = f"real_img_ses_v{IMAGING_STATION_VERSION}_c{IMAGING_STATION_CONFIGURATION}_{date}_{operator_name}"
         global FULL_SESSION_PATH
@@ -488,23 +523,23 @@ class My_App(QtWidgets.QMainWindow):
 
         return sanitized_filename
  
-    def create_report_md(self):
+    def create_report_md(self, end_time):
+        """This function is run once upon exit, giving a summary of what was done in the session."""
         report_name = "report.md"
-        #TODO be able to write notes into here from GUI. These contents should get flushed to txt periodically.
+        operator_name = self.operator_input.text()
+        session_notes = self.session_notes.text()
         report_string = f"""# Imaging Session Report
 # ===
 # Imaging Station Version: 1.0
 # Imaging Station Configuration: 0
-# Date: October 10, 2023
-# Start Time: t0
-# End Time: t1
-# Operator: Grayson King
+# Date: {self.session_date.strftime("%y %b %d %H:%M:%S PST")}
+# Start Time: {self.session_date.strftime("%y %b %d %H:%M:%S PST")}
+# End Time: {end_time.strftime("%y %b %d %H:%M:%S PST")}
+# Operator: {operator_name}
 # Operator Notes:
-# * Note 1
-# * Note 2
-# Other Notes:
-# * Note 3
-# * Note 4
+{session_notes}
+# Fasteners Imaged This Session:
+{self.fastener_record}
 """
         with open(os.path.join(FULL_SESSION_PATH, report_name), "a") as f:
             f.write(report_string)
@@ -540,6 +575,7 @@ class My_App(QtWidgets.QMainWindow):
         self.feed = feed
         print(f"{feed=}")
         self.camera_thread = QtCore.QThread()
+        self.fastener_record.append(fastener_filename)
         self.worker = CameraWorker(self.fastener_filename.text(),
                                    model_helper = self.model_helper,
                                    display_helper = self.display_helper,
@@ -753,6 +789,13 @@ class My_App(QtWidgets.QMainWindow):
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    myApp = My_App()
-    myApp.show()
+
+    intro_dialog = IntroDialog()
+    result = intro_dialog.exec_()
+
+    if result == QtWidgets.QDialog.Accepted:
+        operator_name = intro_dialog.getUsername()
+        myApp = My_App(operator_name)
+        myApp.show()
+
     sys.exit(app.exec_())
