@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1798</width>
+    <width>1771</width>
     <height>931</height>
    </rect>
   </property>
@@ -21,7 +21,7 @@
        <bool>true</bool>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="LabelSelection">
        <attribute name="title">
@@ -3407,6 +3407,33 @@
         </item>
        </layout>
       </widget>
+      <widget class="QWidget" name="text_input_page">
+       <attribute name="title">
+        <string>Notes</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_4">
+        <item>
+         <widget class="QLabel" name="label_23">
+          <property name="text">
+           <string>Operator</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="operator_input"/>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_25">
+          <property name="text">
+           <string>Notes</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPlainTextEdit" name="plainTextEdit"/>
+        </item>
+       </layout>
+      </widget>
       <widget class="QWidget" name="ConfigPage">
        <attribute name="title">
         <string>Configuration (NOT IMPLEMENTED)</string>
@@ -3684,7 +3711,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1798</width>
+     <width>1771</width>
      <height>20</height>
     </rect>
    </property>
@@ -3694,29 +3721,29 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="WasherMaterialGroup"/>
-  <buttongroup name="NutPitchImperialGroup"/>
-  <buttongroup name="NutMaterialGroup"/>
-  <buttongroup name="ScrewDirectionGroup"/>
-  <buttongroup name="NutTypeGroup"/>
-  <buttongroup name="ScrewDiameterImperialGroup"/>
-  <buttongroup name="NutFinishGroup"/>
-  <buttongroup name="ScrewHeadGroup"/>
   <buttongroup name="NutStandardGroup"/>
-  <buttongroup name="NutPitchMetricGroup"/>
-  <buttongroup name="NutDirectionGroup"/>
-  <buttongroup name="ScrewDriveGroup"/>
-  <buttongroup name="ScrewPitchImperialGroup"/>
-  <buttongroup name="ScrewStandardGroup"/>
-  <buttongroup name="ScrewPitchMetricGroup"/>
+  <buttongroup name="ScrewDirectionGroup"/>
+  <buttongroup name="ScrewDiameterImperialGroup"/>
+  <buttongroup name="ScrewDiameterMetricGroup"/>
+  <buttongroup name="WasherMaterialGroup"/>
   <buttongroup name="FastenerTypeGroup"/>
   <buttongroup name="NutDiameterImperialGroup"/>
-  <buttongroup name="ScrewMaterialGroup"/>
-  <buttongroup name="ScrewFinishGroup"/>
-  <buttongroup name="WasherFinishGroup"/>
-  <buttongroup name="NutDiameterMetricGroup"/>
-  <buttongroup name="WasherStandardGroup"/>
-  <buttongroup name="ScrewDiameterMetricGroup"/>
+  <buttongroup name="ScrewHeadGroup"/>
   <buttongroup name="WasherTypeGroup"/>
+  <buttongroup name="NutPitchImperialGroup"/>
+  <buttongroup name="ScrewStandardGroup"/>
+  <buttongroup name="ScrewPitchImperialGroup"/>
+  <buttongroup name="NutDiameterMetricGroup"/>
+  <buttongroup name="ScrewFinishGroup"/>
+  <buttongroup name="ScrewMaterialGroup"/>
+  <buttongroup name="ScrewPitchMetricGroup"/>
+  <buttongroup name="NutPitchMetricGroup"/>
+  <buttongroup name="NutMaterialGroup"/>
+  <buttongroup name="WasherFinishGroup"/>
+  <buttongroup name="ScrewDriveGroup"/>
+  <buttongroup name="NutDirectionGroup"/>
+  <buttongroup name="NutFinishGroup"/>
+  <buttongroup name="WasherStandardGroup"/>
+  <buttongroup name="NutTypeGroup"/>
  </buttongroups>
 </ui>

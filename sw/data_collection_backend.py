@@ -26,7 +26,7 @@ from utils import ModelHelper, DisplayHelper
 # TODO Figure out a better way to move these around ie not globals
 TOP_IMAGES_FOLDER = os.path.join(os.path.dirname(__file__), "images")
 FULL_SESSION_PATH = ""
-REMOTE_IMAGE_FOLDER = "gdrive_more_storage:2357 Screw Sorter/Data Real"
+REMOTE_IMAGE_FOLDER = "gdrive_more_storage:2357 Screw Sorter/data/raw/real"
 CURRENT_STAGED_IMAGE_FOLDER = ""
 IMAGING_STATION_VERSION="1.0"
 IMAGING_STATION_CONFIGURATION="A1"
@@ -113,7 +113,6 @@ class CameraWorker(QtCore.QObject):
                 "subtype": self.app.filename_variables["subtype"].lower()
             }
         elif label_json["fastener_type"] == "nut":
-            # TODO finish this spec
             attributes = {
                 "width":str(self.app.filename_variables["width"]) + " " + wd_units,
                 "height": str(self.app.filename_variables["height"]) + " " + ht_units,
@@ -133,7 +132,10 @@ class CameraWorker(QtCore.QObject):
         return label_json
 
     def setup_fastener_directory(self, fastener_uuid):
-        # make unique uuid for each fastener that's imaged
+        """Create directory and JSON for a single imaging run.
+        This directory is created within the session directory -- each imaging run within the session has its own
+        folder, which is generated in this function."""
+        assert(FULL_SESSION_PATH != "")
         fastener_directory = os.path.join(FULL_SESSION_PATH, "real_" + self.filename + "_" + str(fastener_uuid))
         os.mkdir(fastener_directory)
 
@@ -144,46 +146,8 @@ class CameraWorker(QtCore.QObject):
             json.dump(label_json, file_obj)
         return fastener_directory
 
-    def setup_imaging_directory(self):
-        if not os.path.exists(TOP_IMAGES_FOLDER):
-            os.mkdir(TOP_IMAGES_FOLDER)
-
-        date = datetime.now().strftime("%y_%m_%d_%H_%M_%S")
-        # TODO implement operator name in the GUI
-        operator_name = "KenTodo"
-        session_name = f"real_img_ses_v{IMAGING_STATION_VERSION}_c{IMAGING_STATION_CONFIGURATION}_{date}_{operator_name}"
-        global FULL_SESSION_PATH
-        FULL_SESSION_PATH = os.path.join(TOP_IMAGES_FOLDER, session_name)
-        os.mkdir(FULL_SESSION_PATH)
-
-    def create_report_md(self):
-        report_name = "report.md"
-        #TODO be able to write notes into here from GUI. These contents should get flushed to txt periodically.
-        report_string = """# Imaging Session Report
-# ===
-# Imaging Station Version: 1.0
-# Imaging Station Configuration: 0
-# Date: October 10, 2023
-# Start Time: t0
-# End Time: t1
-# Operator: Grayson King
-# Operator Notes:
-# * Note 1
-# * Note 2
-# Other Notes:
-# * Note 3
-# * Note 4
-"""
-        with open(os.path.join(FULL_SESSION_PATH, report_name), "a") as f:
-            f.write(report_string)
-
-    def run(self):
-        global FIRST_TIME_SETUP
-        if FIRST_TIME_SETUP:
-            self.setup_imaging_directory()
-            self.create_report_md()
-            FIRST_TIME_SETUP = False
-        
+     def run(self):
+        # Create UUID corresponding to this specific run of fasteners.
         fastener_uuid = uuid.uuid4()
         fastener_directory = self.setup_fastener_directory(fastener_uuid)
 
@@ -274,6 +238,10 @@ class My_App(QtWidgets.QMainWindow):
         self.screw_length_imperial_double = CustomDoubleSpinBox()
         self.horizontalLayout_25.addWidget(self.screw_length_imperial_double)
 
+        # Set the date for this session
+        self.session_date = datetime.datetime.now()
+        self.setup_imaging_directory(self.session_date)
+        self.create_report_md()
         # Obtaining camera and applying default settings
         with Vimba.get_instance() as vimba:
             cams = vimba.get_all_cameras()
@@ -496,6 +464,51 @@ class My_App(QtWidgets.QMainWindow):
         self.filename_variables["head"] = pressed_button.text()
         self.update_fastener_filename()
 
+    def setup_imaging_directory(self, creation_date):
+        if not os.path.exists(TOP_IMAGES_FOLDER):
+            os.mkdir(TOP_IMAGES_FOLDER)
+
+        date = creation_date.strftime("%y_%m_%d_%H_%M_%S")
+        # TODO implement operator name in the GUI
+        operator_name = self.operator_input.text()
+        # replace all bad filename characters with underscores
+        operator_name = self.sanitize_filename(operator_name)
+
+        session_name = f"real_img_ses_v{IMAGING_STATION_VERSION}_c{IMAGING_STATION_CONFIGURATION}_{date}_{operator_name}"
+        global FULL_SESSION_PATH
+        FULL_SESSION_PATH = os.path.join(TOP_IMAGES_FOLDER, session_name)
+        os.mkdir(FULL_SESSION_PATH)
+
+    def sanitize_filename(filename):
+        # Define a regular expression pattern to match invalid filename characters
+        invalid_chars = r'[\/:*?"<>|]'
+
+        # Replace invalid characters with underscores
+        sanitized_filename = re.sub(invalid_chars, '_', filename)
+
+        return sanitized_filename
+ 
+    def create_report_md(self):
+        report_name = "report.md"
+        #TODO be able to write notes into here from GUI. These contents should get flushed to txt periodically.
+        report_string = f"""# Imaging Session Report
+# ===
+# Imaging Station Version: 1.0
+# Imaging Station Configuration: 0
+# Date: October 10, 2023
+# Start Time: t0
+# End Time: t1
+# Operator: Grayson King
+# Operator Notes:
+# * Note 1
+# * Note 2
+# Other Notes:
+# * Note 3
+# * Note 4
+"""
+        with open(os.path.join(FULL_SESSION_PATH, report_name), "a") as f:
+            f.write(report_string)
+
     def update_fastener_filename(self):
         current_name = ""
         for key, val in self.filename_variables.items():
@@ -544,7 +557,6 @@ class My_App(QtWidgets.QMainWindow):
 
         # switch to camera tab
         self.tabWidget.setCurrentIndex(1)
-
 
     def redo_imaging(self):
         # May contain more cleanup later
