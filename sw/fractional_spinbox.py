@@ -37,7 +37,10 @@ class CustomDoubleSpinBox(QDoubleSpinBox):
                 return (QValidator.Acceptable, input_text, pos)
             except ValueError:
                 pass
-        
+            except ZeroDivisionError:
+                print("0 division error occurred, replacing value with 0.")
+                input_text = "0"
+
         # For other cases, use the default validator
         return super().validate(input_text, pos)
 
@@ -45,7 +48,11 @@ class CustomDoubleSpinBox(QDoubleSpinBox):
         # Use regular expressions to check if the input is a fraction or a decimal
         if '/' in text:
             # If it's a fraction, convert it to a decimal
-            fraction = Fraction(text)
+            try:
+                fraction = Fraction(text)
+            except ZeroDivisionError:
+                print("0 division error occurred, replacing value with 0.")
+                fraction = Fraction("0")
             value = float(fraction)
         else:
             # If it's a decimal, parse it as a float
