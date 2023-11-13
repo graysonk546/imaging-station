@@ -129,7 +129,6 @@ class CameraWorker(QtCore.QObject):
                 "head": self.app.filename_variables["head"].lower(),
                 "drive": self.app.filename_variables["drive"].lower(),
                 "direction": self.app.filename_variables["direction"].lower(),
-                "material": self.app.filename_variables["material"].lower(),
                 "finish": self.app.filename_variables["finish"].lower()
             }
         elif label_json["fastener_type"] == "washer":
@@ -137,7 +136,6 @@ class CameraWorker(QtCore.QObject):
                 "height": str(self.app.filename_variables["height"]) + " " + ht_units,
                 "inner_diameter": str(self.app.filename_variables["inner_diameter"]) + " " + dia_units,
                 "outer_diameter": str(self.app.filename_variables["outer_diameter"]) + " " + dia_units,
-                "material": self.app.filename_variables["material"].lower(),
                 "finish": self.app.filename_variables["finish"].lower(),
                 "subtype": self.app.filename_variables["subtype"].lower()
             }
@@ -148,7 +146,6 @@ class CameraWorker(QtCore.QObject):
                 "diameter": str(self.app.filename_variables["diameter"]) + " " + dia_units,
                 "pitch": str(self.app.filename_variables["pitch"]) + " " + pitch_units,
                 "direction": self.app.filename_variables["direction"].lower(),
-                "material": self.app.filename_variables["material"].lower(),
                 "finish": self.app.filename_variables["finish"].lower(),
                 "subtype": self.app.filename_variables["subtype"].lower()
             }
@@ -302,7 +299,6 @@ class My_App(QtWidgets.QMainWindow):
         self.filename_variables["head"] = None
         self.filename_variables["drive"] = None
         self.filename_variables["direction"] = None
-        self.filename_variables["material"] = None
         self.filename_variables["finish"] = None
         self.filename_variables[""] = None
 
@@ -322,7 +318,6 @@ class My_App(QtWidgets.QMainWindow):
         self.NutDiameterMetricGroup.buttonClicked.connect(self.assign_diameter)
         self.NutDiameterImperialGroup.buttonClicked.connect(self.assign_diameter)
         self.NutFinishGroup.buttonClicked.connect(self.assign_finish)
-        self.NutMaterialGroup.buttonClicked.connect(self.assign_material)
         self.NutPitchMetricGroup.buttonClicked.connect(self.assign_pitch)
         self.NutPitchImperialGroup.buttonClicked.connect(self.assign_pitch)
         self.NutStandardGroup.buttonClicked.connect(
@@ -344,7 +339,6 @@ class My_App(QtWidgets.QMainWindow):
         self.ScrewHeadGroup.buttonClicked.connect(self.assign_head)
         self.screw_length_imperial_double.textChanged.connect(self.assign_length)
         self.screw_length_metric_double.textChanged.connect(self.assign_length)
-        self.ScrewMaterialGroup.buttonClicked.connect(self.assign_material)
         self.ScrewPitchMetricGroup.buttonClicked.connect(self.assign_pitch)
         self.ScrewPitchImperialGroup.buttonClicked.connect(self.assign_pitch)
         self.ScrewStandardGroup.buttonClicked.connect(
@@ -354,7 +348,6 @@ class My_App(QtWidgets.QMainWindow):
         self.WasherFinishGroup.buttonClicked.connect(self.assign_finish)
         self.washer_inner_diameter_metric_double.textChanged.connect(self.assign_inner_diameter)
         self.washer_inner_diameter_imperial_double.textChanged.connect(self.assign_inner_diameter)
-        self.WasherMaterialGroup.buttonClicked.connect(self.assign_material)
         self.washer_outer_diameter_metric_double.textChanged.connect(self.assign_outer_diameter)
         self.washer_outer_diameter_imperial_double.textChanged.connect(self.assign_outer_diameter)
         self.WasherStandardGroup.buttonClicked.connect(
@@ -439,10 +432,6 @@ class My_App(QtWidgets.QMainWindow):
 
     def assign_inner_diameter(self, inner_diameter_text):
         self.filename_variables["inner_diameter"] = inner_diameter_text
-        self.update_fastener_filename()
-
-    def assign_material(self, pressed_button):
-        self.filename_variables["material"] = pressed_button.text()
         self.update_fastener_filename()
 
     def assign_outer_diameter(self, outer_diameter_text):
