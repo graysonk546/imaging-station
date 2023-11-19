@@ -13,12 +13,16 @@ import json
 import uuid
 import re
 
+from vimba import *
 import os
 from datetime import datetime
 from collections import OrderedDict
 from rclone_python import rclone
 
 import numpy
+import torch
+import torchvision.transforms.transforms as T
+from utils import ModelHelper, DisplayHelper
 
 # TODO Figure out a better way to move these around ie not globals
 TOP_IMAGES_FOLDER = os.path.join(os.path.dirname(__file__), "images")
@@ -34,11 +38,6 @@ SIDEON_INCLUDED=True
 NUMBER_SIDEON=9
 
 CAMERA = None
-
-class Camera():
-    def __init__(self):
-        print("Camera dummy")
-
 
 class IntroDialog(QtWidgets.QDialog):
     def __init__(self):
@@ -176,7 +175,7 @@ class CameraWorker(QtCore.QObject):
     def run(self):
         # Calibrate camera before starting camera loop
         print("before")
-        # self.change_camera_settings.emit(CAMERA, self.top_down_exposure_us, self.top_down_balance_red, self.top_down_balance_blue)
+        self.change_camera_settings.emit(CAMERA, self.top_down_exposure_us, self.top_down_balance_red, self.top_down_balance_blue)
         side_view_exposure = False
         print("Waiting for camera settings to finish")
         # Wait 2s for the setup to finish (.emit() is multithreaded)
@@ -185,13 +184,12 @@ class CameraWorker(QtCore.QObject):
         print("Starting Loop")
         n = 0
         # establish serial communication with Bluepill
-        # s = serial.Serial("/dev/ttyUSB0", 115200)
+        s = serial.Serial("/dev/ttyUSB0", 115200)
         # commence the imaging session with the "start" command
-        # time.sleep(1)
-        # print(s.write(b"start\n"))
-        # s.flush()
+        time.sleep(1)
+        print(s.write(b"start\n"))
+        s.flush()
         while True:
-            break
             # Change camera settings AFTER taking top-down shot
             if n == 1 and not side_view_exposure:
                 print("sf")
@@ -263,28 +261,27 @@ class My_App(QtWidgets.QMainWindow):
         self.horizontalLayout_25.addWidget(self.screw_length_imperial_double)
 
         # Set the date for this session
-        self.session_date = datetime.now()
-        self.operator_name = operator_name
-        if self.operator_name == "":
+        self.session_date = datetime.datetime.now()
+        if operator_name == "":
             QMessageBox.warning(self, "Missing Operator Name", "Please fill out the operator name before you begin imaging.")
             # set tab to operator input tab
             raise Exception("Operator name string is empty. Please fill out the box with alphabetical letters before continuing.")
-        self.setup_imaging_directory(self.session_date, self.operator_name)
+        self.setup_imaging_directory(self.session_date, operator_name)
         self.fastener_record = []
 
         # Setup quit function. Note this function should be declared after session_date and imaging_directory is made.
         QtWidgets.QApplication.instance().aboutToQuit.connect(self.cleanupFunction)
 
         # Obtaining camera and applying default settings
-#         with Vimba.get_instance() as vimba:
-#             cams = vimba.get_all_cameras()
-#         if not cams:
-#             raise Exception("No Cameras accessible. Abort.")
-#         self.cam = cams[0]
-#         global CAMERA
-#         CAMERA = self.cam
-#         self.setup_camera(self.cam)
-# 
+        with Vimba.get_instance() as vimba:
+            cams = vimba.get_all_cameras()
+        if not cams:
+            raise Exception("No Cameras accessible. Abort.")
+        self.cam = cams[0]
+        global CAMERA
+        CAMERA = self.cam
+        self.setup_camera(self.cam)
+
         # The order of fields put in here determines the order in the filename.
         self.filename_variables = OrderedDict()
         self.filename_variables["type"] = None
@@ -691,7 +688,6 @@ class My_App(QtWidgets.QMainWindow):
         return
 
     def setup_camera(self, cam: Camera, exposure_us=None, balance_red=None, balance_blue=None):
-        return
         print("setup")
         with Vimba.get_instance() as vimba:
             with cam:
