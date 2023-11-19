@@ -11,6 +11,7 @@ import time
 import serial
 import json
 import uuid
+import re
 
 import os
 from datetime import datetime
@@ -498,7 +499,6 @@ class My_App(QtWidgets.QMainWindow):
             os.mkdir(TOP_IMAGES_FOLDER)
 
         date = creation_date.strftime("%y_%m_%d_%H_%M_%S")
-        
         # replace all potential bad filename characters with underscores
 
         session_name = f"real_img_ses_v{IMAGING_STATION_VERSION}_c{IMAGING_STATION_CONFIGURATION}_{date}_{operator_name}"
@@ -506,7 +506,7 @@ class My_App(QtWidgets.QMainWindow):
         FULL_SESSION_PATH = os.path.join(TOP_IMAGES_FOLDER, session_name)
         os.mkdir(FULL_SESSION_PATH)
 
-    def sanitize_filename(filename):
+    def sanitize_filename(self, filename):
         # Define a regular expression pattern to match invalid filename characters
         invalid_chars = r'[\/:*?"<>|]'
 
@@ -523,9 +523,9 @@ class My_App(QtWidgets.QMainWindow):
 # ===
 # Imaging Station Version: 1.0
 # Imaging Station Configuration: 0
-# Date: {self.session_date.strftime("%y %b %d %H:%M:%S PST")}
-# Start Time: {self.session_date.strftime("%y %b %d %H:%M:%S PST")}
-# End Time: {end_time.strftime("%y %b %d %H:%M:%S PST")}
+# Date: {self.session_date.isoformat(sep=" ", timespec="milliseconds")}
+# Start Time: {self.session_date.isoformat(sep=" ", timespec="milliseconds")}
+# End Time: {end_time.isoformat(sep=" ", timespec="milliseconds")}
 # Operator: {self.operator_name}
 # Operator Notes:
 {session_notes}
