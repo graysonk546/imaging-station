@@ -235,7 +235,7 @@ class CameraWorker(QtCore.QObject):
                             self.progress.emit(frame_cv2)
                             print("Done Drawing")
                             final_filename = os.path.join(
-                                self.fastener_directory, f"{n}_{fastener_uuid}.tiff")
+                                self.fastener_directory, f"{n}_{self.fastener_uuid}.tiff")
                             print(final_filename)
                             cv2.imwrite(final_filename, frame_cv2)
                             n += 1
