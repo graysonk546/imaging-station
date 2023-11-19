@@ -13,12 +13,16 @@ import json
 import uuid
 import re
 
+from vimba import *
 import os
 from datetime import datetime
 from collections import OrderedDict
 from rclone_python import rclone
 
 import numpy
+import torch
+import torchvision.transforms.transforms as T
+from utils import ModelHelper, DisplayHelper
 
 # TODO Figure out a better way to move these around ie not globals
 TOP_IMAGES_FOLDER = os.path.join(os.path.dirname(__file__), "images")
@@ -35,12 +39,7 @@ NUMBER_SIDEON=9
 
 CAMERA = None
 
-class Camera():
-    def __init__(self):
-        print("Camera dummy")
-
-
-class IntroDialog(QtWidgets.QDialog):
+class IntroDialog(QDialog):
     def __init__(self):
         super().__init__()
 
@@ -48,22 +47,22 @@ class IntroDialog(QtWidgets.QDialog):
 
     def initUI(self):
         # Create widgets for the dialog
-        label = QtWidgets.QLabel("Enter your name:")
-        self.username = QtWidgets.QLineEdit(self)
-        ok_button = QtWidgets.QPushButton("OK", self)
+        label = QLabel("Enter your name:")
+        self.operator_name = QLineEdit(self)
+        ok_button = QPushButton("OK", self)
         ok_button.clicked.connect(self.accept)
 
         # Create layout for the dialog
-        layout = QtWidgets.QVBoxLayout()
+        layout = QVBoxLayout()
         layout.addWidget(label)
-        layout.addWidget(self.username)
+        layout.addWidget(self.operator_name)
         layout.addWidget(ok_button)
 
         # Set the layout for the dialog
         self.setLayout(layout)
 
     def getUsername(self):
-        return self.username.text()
+        return self.operator_name.text()
 
 class CameraWorker(QtCore.QObject):
     upload = QtCore.pyqtSignal(str)
@@ -86,10 +85,6 @@ class CameraWorker(QtCore.QObject):
         self.model_helper = model_helper
         self.display_helper = display_helper
         self.feed = feed
-
-        # Create UUID corresponding to this specific run of fasteners.
-        self.fastener_uuid = uuid.uuid4()
-        self.fastener_directory = self.setup_fastener_directory(self.fastener_uuid)
 
     def create_label_json(self, unique_id):
         """Creates json label for specific imaging run. any variables not entered into the GUI will be `None`."""
@@ -174,9 +169,13 @@ class CameraWorker(QtCore.QObject):
         return fastener_directory
 
     def run(self):
+        # Create UUID corresponding to this specific run of fasteners.
+        fastener_uuid = uuid.uuid4()
+        fastener_directory = self.setup_fastener_directory(fastener_uuid)
+
         # Calibrate camera before starting camera loop
         print("before")
-        # self.change_camera_settings.emit(CAMERA, self.top_down_exposure_us, self.top_down_balance_red, self.top_down_balance_blue)
+        self.change_camera_settings.emit(CAMERA, self.top_down_exposure_us, self.top_down_balance_red, self.top_down_balance_blue)
         side_view_exposure = False
         print("Waiting for camera settings to finish")
         # Wait 2s for the setup to finish (.emit() is multithreaded)
@@ -185,13 +184,12 @@ class CameraWorker(QtCore.QObject):
         print("Starting Loop")
         n = 0
         # establish serial communication with Bluepill
-        # s = serial.Serial("/dev/ttyUSB0", 115200)
+        s = serial.Serial("/dev/ttyUSB0", 115200)
         # commence the imaging session with the "start" command
-        # time.sleep(1)
-        # print(s.write(b"start\n"))
-        # s.flush()
+        time.sleep(1)
+        print(s.write(b"start\n"))
+        s.flush()
         while True:
-            break
             # Change camera settings AFTER taking top-down shot
             if n == 1 and not side_view_exposure:
                 print("sf")
@@ -237,7 +235,7 @@ class CameraWorker(QtCore.QObject):
                             self.progress.emit(frame_cv2)
                             print("Done Drawing")
                             final_filename = os.path.join(
-                                self.fastener_directory, f"{n}_{fastener_uuid}.tiff")
+                                fastener_directory, f"{n}_{fastener_uuid}.tiff")
                             print(final_filename)
                             cv2.imwrite(final_filename, frame_cv2)
                             n += 1
@@ -249,7 +247,7 @@ class CameraWorker(QtCore.QObject):
                     # exit the control loop
                     break
 
-        self.upload.emit(self.fastener_directory)
+        self.upload.emit(fastener_directory)
         self.finished.emit()
 
 
@@ -263,28 +261,27 @@ class My_App(QtWidgets.QMainWindow):
         self.horizontalLayout_25.addWidget(self.screw_length_imperial_double)
 
         # Set the date for this session
-        self.session_date = datetime.now()
-        self.operator_name = operator_name
-        if self.operator_name == "":
+        self.session_date = datetime.datetime.now()
+        if operator_name == "":
             QMessageBox.warning(self, "Missing Operator Name", "Please fill out the operator name before you begin imaging.")
             # set tab to operator input tab
             raise Exception("Operator name string is empty. Please fill out the box with alphabetical letters before continuing.")
-        self.setup_imaging_directory(self.session_date, self.operator_name)
+        self.setup_imaging_directory(self.session_date, operator_name)
         self.fastener_record = []
 
         # Setup quit function. Note this function should be declared after session_date and imaging_directory is made.
         QtWidgets.QApplication.instance().aboutToQuit.connect(self.cleanupFunction)
 
         # Obtaining camera and applying default settings
-#         with Vimba.get_instance() as vimba:
-#             cams = vimba.get_all_cameras()
-#         if not cams:
-#             raise Exception("No Cameras accessible. Abort.")
-#         self.cam = cams[0]
-#         global CAMERA
-#         CAMERA = self.cam
-#         self.setup_camera(self.cam)
-# 
+        with Vimba.get_instance() as vimba:
+            cams = vimba.get_all_cameras()
+        if not cams:
+            raise Exception("No Cameras accessible. Abort.")
+        self.cam = cams[0]
+        global CAMERA
+        CAMERA = self.cam
+        self.setup_camera(self.cam)
+
         # The order of fields put in here determines the order in the filename.
         self.filename_variables = OrderedDict()
         self.filename_variables["type"] = None
@@ -491,7 +488,7 @@ class My_App(QtWidgets.QMainWindow):
 
     def cleanupFunction(self):
         print("Performing cleanup operations...")
-        ending_time = datetime.now()
+        ending_time = datetime.datetime.now()
         self.create_report_md(ending_time)
 
     def setup_imaging_directory(self, creation_date, operator_name):
@@ -518,7 +515,8 @@ class My_App(QtWidgets.QMainWindow):
     def create_report_md(self, end_time):
         """This function is run once upon exit, giving a summary of what was done in the session."""
         report_name = "report.md"
-        session_notes = self.session_notes.toPlainText()
+        operator_name = self.operator_input.text()
+        session_notes = self.session_notes.text()
         report_string = f"""# Imaging Session Report
 # ===
 # Imaging Station Version: 1.0
@@ -566,11 +564,11 @@ class My_App(QtWidgets.QMainWindow):
         self.feed = feed
         print(f"{feed=}")
         self.camera_thread = QtCore.QThread()
+        self.fastener_record.append(fastener_filename)
         self.worker = CameraWorker(self.fastener_filename.text(),
                                    model_helper = self.model_helper,
                                    display_helper = self.display_helper,
                                    feed = feed, app=self)
-        self.fastener_record.append(os.path.basename(self.worker.fastener_directory))
         self.worker.moveToThread(self.camera_thread)
         # Connect signals/slots
         self.camera_thread.started.connect(self.worker.run)
@@ -691,7 +689,6 @@ class My_App(QtWidgets.QMainWindow):
         return
 
     def setup_camera(self, cam: Camera, exposure_us=None, balance_red=None, balance_blue=None):
-        return
         print("setup")
         with Vimba.get_instance() as vimba:
             with cam:
