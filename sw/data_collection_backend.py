@@ -261,7 +261,7 @@ class My_App(QtWidgets.QMainWindow):
         self.horizontalLayout_25.addWidget(self.screw_length_imperial_double)
 
         # Set the date for this session
-        self.session_date = datetime.datetime.now()
+        self.session_date = datetime.now()
         if operator_name == "":
             QMessageBox.warning(self, "Missing Operator Name", "Please fill out the operator name before you begin imaging.")
             # set tab to operator input tab
