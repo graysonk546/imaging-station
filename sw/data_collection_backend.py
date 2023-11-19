@@ -262,9 +262,9 @@ class My_App(QtWidgets.QMainWindow):
 
         # Set the date for this session
         self.session_date = datetime.now()
-        if operator_name == "":
+        self.operator_name = operator_name
+        if self.operator_name == "":
             QMessageBox.warning(self, "Missing Operator Name", "Please fill out the operator name before you begin imaging.")
-            # set tab to operator input tab
             raise Exception("Operator name string is empty. Please fill out the box with alphabetical letters before continuing.")
         self.setup_imaging_directory(self.session_date, operator_name)
         self.fastener_record = []
