@@ -14,8 +14,8 @@
    <string>Data Collection GUI</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QHBoxLayout" name="horizontalLayout_23">
-    <item>
+   <layout class="QGridLayout" name="gridLayout_17">
+    <item row="0" column="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="enabled">
        <bool>true</bool>
@@ -77,7 +77,7 @@
         <item>
          <widget class="QStackedWidget" name="fastener_stack">
           <property name="currentIndex">
-           <number>0</number>
+           <number>1</number>
           </property>
           <widget class="QWidget" name="label_select_blank"/>
           <widget class="QWidget" name="Screw">
@@ -3206,20 +3206,6 @@
           </property>
           <widget class="QWidget" name="page">
            <layout class="QGridLayout" name="gridLayout_6">
-            <item row="2" column="3">
-             <widget class="QPushButton" name="classify_m2_vs_m3">
-              <property name="text">
-               <string>Classify M2 vs M3</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0">
-             <widget class="QPushButton" name="upload_single_fastener_gdrive_button">
-              <property name="text">
-               <string>Upload this fastener ONLY to Google Drive</string>
-              </property>
-             </widget>
-            </item>
             <item row="1" column="0">
              <widget class="QLabel" name="label_2">
               <property name="maximumSize">
@@ -3233,13 +3219,6 @@
               </property>
              </widget>
             </item>
-            <item row="2" column="1">
-             <widget class="QPushButton" name="upload_all_sessions_gdrive_button">
-              <property name="text">
-               <string>Upload all past sessions to Google Drive</string>
-              </property>
-             </widget>
-            </item>
             <item row="2" column="2">
              <widget class="QPushButton" name="discard_images_button">
               <property name="text">
@@ -3247,22 +3226,50 @@
               </property>
              </widget>
             </item>
+            <item row="2" column="0">
+             <widget class="QPushButton" name="upload_all_sessions_gdrive_button">
+              <property name="text">
+               <string>Upload all past sessions to Google Drive</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="3">
+             <widget class="QPushButton" name="classify_m2_vs_m3">
+              <property name="text">
+               <string>Classify M2 vs M3</string>
+              </property>
+             </widget>
+            </item>
            </layout>
           </widget>
           <widget class="QWidget" name="page_2">
-           <widget class="QLabel" name="label">
-            <property name="geometry">
-             <rect>
-              <x>100</x>
-              <y>20</y>
-              <width>411</width>
-              <height>51</height>
-             </rect>
-            </property>
-            <property name="text">
-             <string>Upload complete! Please go back to Label Selection</string>
-            </property>
-           </widget>
+           <layout class="QHBoxLayout" name="horizontalLayout_9">
+            <item>
+             <widget class="QLabel" name="label">
+              <property name="text">
+               <string>Upload in progress...</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="page_3">
+           <layout class="QGridLayout" name="gridLayout_19">
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_23">
+              <property name="text">
+               <string>Upload Complete!</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QPushButton" name="confirm_upload_complete">
+              <property name="text">
+               <string>OK</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </widget>
          </widget>
         </item>
@@ -3572,26 +3579,26 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="NutTypeGroup"/>
-  <buttongroup name="NutStandardGroup"/>
-  <buttongroup name="ScrewDriveGroup"/>
-  <buttongroup name="FastenerTypeGroup"/>
-  <buttongroup name="WasherFinishGroup"/>
-  <buttongroup name="WasherStandardGroup"/>
-  <buttongroup name="NutDiameterMetricGroup"/>
-  <buttongroup name="NutPitchImperialGroup"/>
-  <buttongroup name="ScrewDirectionGroup"/>
-  <buttongroup name="ScrewDiameterMetricGroup"/>
-  <buttongroup name="ScrewPitchMetricGroup"/>
-  <buttongroup name="ScrewPitchImperialGroup"/>
-  <buttongroup name="NutDirectionGroup"/>
   <buttongroup name="ScrewFinishGroup"/>
-  <buttongroup name="ScrewHeadGroup"/>
-  <buttongroup name="ScrewStandardGroup"/>
-  <buttongroup name="NutPitchMetricGroup"/>
-  <buttongroup name="ScrewDiameterImperialGroup"/>
-  <buttongroup name="NutFinishGroup"/>
-  <buttongroup name="NutDiameterImperialGroup"/>
+  <buttongroup name="NutDiameterMetricGroup"/>
+  <buttongroup name="ScrewPitchMetricGroup"/>
+  <buttongroup name="NutStandardGroup"/>
+  <buttongroup name="ScrewPitchImperialGroup"/>
+  <buttongroup name="ScrewDirectionGroup"/>
   <buttongroup name="WasherTypeGroup"/>
+  <buttongroup name="ScrewHeadGroup"/>
+  <buttongroup name="NutFinishGroup"/>
+  <buttongroup name="ScrewDiameterImperialGroup"/>
+  <buttongroup name="NutDiameterImperialGroup"/>
+  <buttongroup name="NutTypeGroup"/>
+  <buttongroup name="NutDirectionGroup"/>
+  <buttongroup name="ScrewDiameterMetricGroup"/>
+  <buttongroup name="FastenerTypeGroup"/>
+  <buttongroup name="NutPitchMetricGroup"/>
+  <buttongroup name="WasherStandardGroup"/>
+  <buttongroup name="WasherFinishGroup"/>
+  <buttongroup name="ScrewStandardGroup"/>
+  <buttongroup name="ScrewDriveGroup"/>
+  <buttongroup name="NutPitchImperialGroup"/>
  </buttongroups>
 </ui>

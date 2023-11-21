@@ -27,8 +27,7 @@ from utils import ModelHelper, DisplayHelper
 # TODO Figure out a better way to move these around ie not globals
 TOP_IMAGES_FOLDER = ""
 FULL_SESSION_PATH = ""
-# REMOTE_IMAGE_FOLDER = "gdrive_more_storage:2357 Screw Sorter/data/raw/real"
-REMOTE_IMAGE_FOLDER = "gdrive_more_storage:2357 Screw Sorter/data/test"
+REMOTE_IMAGE_FOLDER = "gdrive_more_storage:2357 Screw Sorter/data/raw/real"
 CURRENT_STAGED_IMAGE_FOLDER = ""
 IMAGING_STATION_VERSION="1.0"
 IMAGING_STATION_CONFIGURATION="A1"
@@ -255,35 +254,46 @@ class UploadWorker(QtCore.QObject):
     """Class designed for use in a thread to upload imaging runs from the station to the cloud."""
     finished = QtCore.pyqtSignal()
 
-    def __init__(self, local_directory: str, remote_directory: str):
+    def __init__(self, local_top_directory: str, remote_top_directory: str):
+        """local_top_directory: folder containing all past sessions
+            remote_top_directory: cloud folder containing all uploaded sessions"""
         super(UploadWorker, self).__init__()
         self.local_directory = local_directory
         self.remote_directory = remote_directory
 
+        # TODO: Implement a way to prevent new fasteners (subdirectories of sessions) from getting thrown into a fresh upload.
+        # current solution prevents new sessions from getting added but that's not a problem here.
+        self.session_folders = [x for x in os.listdir(local_directory) if os.path.isdir(os.path.join(local_directory, x))]
+
         # check that these directories exist
-        if not os.path.exists(local_directory) or not os.path.exists(remote_directory):
-            raise Exception(f"Could not create upload thread, {local_directory} and/or {remote_directory} not found")
+        if not os.path.exists(local_directory):
+            raise Exception(f"Could not create upload thread, {local_directory} not found")
 
     def run(self):
-        print(f"Uploading to Drive. Remote drive path: {self.remote_directory}")
-        print(f"On-device path: {self.local_directory}")
-        try:
-            # .copy() compares local_directory to remote_directory, only changing files that are different.
-            rclone.copy(self.local_directory, self.remote_directory)
-        except UnicodeDecodeError as uni_e:
-            print(str(uni_e))
-            print("Error. Wait a few seconds and click 'Upload to Google Drive' again.")
-            print("If upload continues to fail after multiple retries, try typing this into your command line:")
-            print(f"rclone copy {self.local_directory} {self.remote_directory}")
-            return
-            # Kenneth commentary: I think it's something to do with the image data not getting flushed to the file, so the copy() function finds files that are empty.
-            # I find that it always works after I retry a few times, so it's not a high-prio bug.
-        except Exception as e:
-            print(str(e))
-            print("You probably need to refresh the token with rclone config. Consult the README for a guide on how to do so.")
-            return
-        print(f"Upload complete")
-        self.DriveUploadConfirmStack.setCurrentIndex(1)
+        for session_dir in self.session_folders:
+            # must combine with high-level folder names
+            local_dir_full = os.path.join(self.local_directory, session_dir)
+            remote_dir_full = os.path.join(self.remote_directory, session_dir)
+            
+            print(f"Uploading to Drive. Remote drive path: {local_dir_full}")
+            print(f"On-device path: {remote_dir_full}")
+            try:
+                # .copy() compares local_directory to remote_directory, only changing files that are different.
+                rclone.copy(local_dir_full, remote_dir_full)
+            except UnicodeDecodeError as uni_e:
+                print(str(uni_e))
+                print("Error. Wait a few seconds and click 'Upload to Google Drive' again.")
+                print("If upload continues to fail after multiple retries, try typing this into your command line:")
+                print(f"rclone copy {local_dir_full} {remote_dir_full}")
+                return
+                # Kenneth commentary: I think it's something to do with the image data not getting flushed to the file, so the copy() function finds files that are empty.
+                # I find that it always works after I retry a few times, so it's not a high-prio bug.
+            except Exception as e:
+                print(str(e))
+                return
+            print(f"Uploaded {session_dir}.")
+
+        print(f"Entire upload complete")
         self.finished.emit()
 
 
@@ -391,9 +401,9 @@ class My_App(QtWidgets.QMainWindow):
         self.washer_height_imperial_double.textChanged.connect(self.assign_height)
         self.WasherTypeGroup.buttonClicked.connect(self.assign_subtype)
 
-        self.upload_single_fastener_gdrive_button.clicked.connect(self.upload_single_fastener_to_gdrive)
         self.upload_all_sessions_gdrive_button.clicked.connect(self.upload_all_sessions_to_gdrive)
         self.discard_images_button.clicked.connect(self.redo_imaging)
+        self.confirm_upload_complete.clicked.connect(self.change_upload_button_normal)
 
         self.model_helper = None
         self.display_helper = None
@@ -524,6 +534,8 @@ class My_App(QtWidgets.QMainWindow):
         self.update_fastener_filename()
 
     def cleanupFunction(self):
+        """Closing function that is run upon normal exit.
+        Writes to necessary files."""
         print("Performing cleanup operations...")
         ending_time = datetime.now()
         self.create_report_md(ending_time)
@@ -558,24 +570,28 @@ class My_App(QtWidgets.QMainWindow):
 
         return sanitized_filename
  
-    def create_report_md(self, end_time):
-        """This function is run once upon exit, giving a summary of what was done in the session."""
+    def create_report_md(self, end_time=None):
+        """This function is run periodically, and always upon exit, giving a summary of what was done in the session."""
         report_name = "report.md"
         session_notes = self.session_notes.toPlainText()
+        if end_time != None:
+            end_time_string = end_time.isoformat(sep=" ", timespec="milliseconds")
+        else:
+            end_time_string = "still_in_progress"
         report_string = f"""# Imaging Session Report
 # ===
 # Imaging Station Version: 1.0
 # Imaging Station Configuration: 0
 # Date: {self.session_date.isoformat(sep=" ", timespec="milliseconds")}
 # Start Time: {self.session_date.isoformat(sep=" ", timespec="milliseconds")}
-# End Time: {end_time.isoformat(sep=" ", timespec="milliseconds")}
+# End Time: {end_time_string}
 # Operator: {self.operator_name}
 # Operator Notes:
 {session_notes}
 # Fasteners Imaged This Session:
 {self.fastener_record}
 """
-        with open(os.path.join(FULL_SESSION_PATH, report_name), "a") as f:
+        with open(os.path.join(FULL_SESSION_PATH, report_name), "w") as f:
             f.write(report_string)
 
     def update_fastener_filename(self):
@@ -622,6 +638,7 @@ class My_App(QtWidgets.QMainWindow):
         self.worker.upload.connect(self.ask_user_for_upload_decision)
         self.worker.finished.connect(self.camera_thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
+        self.worker.finished.connect(self.create_report_md)
         self.camera_thread.finished.connect(self.camera_thread.deleteLater)
         self.camera_thread.start()
 
@@ -661,7 +678,6 @@ class My_App(QtWidgets.QMainWindow):
             pixmap = self.convert_cv_to_pixmap(resized_photo)
             self.camera_feed.setPixmap(pixmap)
 
-        self.DriveUploadConfirmStack.setCurrentIndex(0)
         self.tabWidget.setCurrentIndex(2)
 
         # ribbit ribbit ribbit 
@@ -678,46 +694,31 @@ class My_App(QtWidgets.QMainWindow):
         """Performs an upload of all sessions. Will only push files that have changed compared to what's in the cloud."""
         image_directory = TOP_IMAGES_FOLDER
         upload_path = os.path.join(REMOTE_IMAGE_FOLDER)
-        upload_worker = UploadWorker(image_directory, upload_path)
-
+        
         # Set up thread to upload
         self.upload_thread = QtCore.QThread()
-        upload_worker.moveToThread(self.upload_thread)
+        self.upload_worker = UploadWorker(image_directory, upload_path)
+        self.upload_worker.moveToThread(self.upload_thread)
         # Connect signals/slots
-        self.upload_thread.started.connect(upload_worker.run)
-        upload_worker.finished.connect(self.upload_thread.quit)
-        upload_worker.finished.connect(upload_worker.deleteLater)
+        self.upload_thread.started.connect(self.upload_worker.run)
+        self.upload_worker.finished.connect(self.upload_thread.quit)
+        self.upload_worker.finished.connect(self.upload_worker.deleteLater)
         self.upload_thread.finished.connect(self.upload_thread.deleteLater)
+        self.upload_worker.finished.connect(self.change_upload_button_success)
 
         # Execute upload thread
+        print("Starting upload thread")
         self.upload_thread.start()
-
-    def upload_single_fastener_to_gdrive(self):
-        # TODO multithread this.
-        # Split input so the gdrive only has the imaging_test_../ folder,
-        # and we don't upload the images/ parent folder too
-        image_directory = CURRENT_STAGED_IMAGE_FOLDER
-        session_folder = os.path.split(FULL_SESSION_PATH)[-1]
-        lowest_level_folder = os.path.split(image_directory)[-1]
-        upload_path = os.path.join(REMOTE_IMAGE_FOLDER, session_folder, lowest_level_folder)
-        print(f"Uploading to Drive. Path: {upload_path}")
-        print(f"On-device path: {image_directory}")
-        try:
-            rclone.copy(image_directory, upload_path)
-        except UnicodeDecodeError as uni_e:
-            print(str(uni_e))
-            print("Error. Wait a few seconds and click 'Upload to Google Drive' again. Consult code for Kenneth commentary.")
-            print("If upload continues to fail after multiple retries, try typing this into your command line:")
-            print(f"rclone copy {image_directory} {upload_path}")
-            return
-            # Kenneth commentary: I think it's something to do with the image data not getting flushed to the file, so the copy() function finds files that are empty.
-            # I find that it always works after I retry a few times, so it's not a high-prio bug.
-        except Exception as e:
-            print(str(e))
-            print("You probably need to refresh the token with rclone config. Consult the README for a guide on how to do so.")
-            return
-        print(f"Upload complete")
+        self.change_upload_button_in_progress()
+    
+    def change_upload_button_in_progress(self):
         self.DriveUploadConfirmStack.setCurrentIndex(1)
+
+    def change_upload_button_success(self):
+        self.DriveUploadConfirmStack.setCurrentIndex(2)
+
+    def change_upload_button_normal(self):
+        self.DriveUploadConfirmStack.setCurrentIndex(0)
 
     def reset_filename_variables(self):
         # Reset variables for the next thread imaging suite
