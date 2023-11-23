@@ -21,7 +21,7 @@ class CustomDoubleSpinBox(QDoubleSpinBox):
     def __init__(self):
         super().__init__()
         self.setDecimals(5)  # Max num of decimals for 1/32 = 0.03125
-        self.setRange(0.0, 1000.0)  # To accomodate input of large fractions eg 500/32
+        self.setRange(0.0, 400.0)  # To accomodate input of large fractions eg 12in max = 384/32in
         self.setSingleStep(1.0 / 32)  # Set your desired step
         
         # Use a custom line edit widget

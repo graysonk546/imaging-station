@@ -684,6 +684,9 @@ class My_App(QtWidgets.QMainWindow):
         """Performs an upload of all sessions. Will only push files that have changed compared to what's in the cloud."""
         image_directory = TOP_IMAGES_FOLDER
         upload_path = os.path.join(REMOTE_IMAGE_FOLDER)
+
+        # Write current session's progress to report.md
+        self.create_report_md()
         
         # Set up thread to upload
         self.upload_thread = QtCore.QThread()
