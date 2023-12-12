@@ -11,6 +11,7 @@ import time
 import serial
 import json
 import uuid
+import re
 
 from vimba import *
 import os
@@ -24,9 +25,9 @@ import torchvision.transforms.transforms as T
 from utils import ModelHelper, DisplayHelper
 
 # TODO Figure out a better way to move these around ie not globals
-TOP_IMAGES_FOLDER = os.path.join(os.path.dirname(__file__), "images")
+TOP_IMAGES_FOLDER = ""
 FULL_SESSION_PATH = ""
-REMOTE_IMAGE_FOLDER = "gdrive_more_storage:2357 Screw Sorter/Data Real"
+REMOTE_IMAGE_FOLDER = "gdrive_more_storage:2357 Screw Sorter/data/raw/real"
 CURRENT_STAGED_IMAGE_FOLDER = ""
 IMAGING_STATION_VERSION="1.0"
 IMAGING_STATION_CONFIGURATION="A1"
@@ -38,6 +39,30 @@ NUMBER_SIDEON=9
 
 CAMERA = None
 
+class IntroDialog(QtWidgets.QDialog):
+    def __init__(self):
+        super().__init__()
+
+        self.initUI()
+
+    def initUI(self):
+        # Create widgets for the dialog
+        label = QtWidgets.QLabel("Enter your name:")
+        self.username = QtWidgets.QLineEdit(self)
+        ok_button = QtWidgets.QPushButton("OK", self)
+        ok_button.clicked.connect(self.accept)
+
+        # Create layout for the dialog
+        layout = QtWidgets.QVBoxLayout()
+        layout.addWidget(label)
+        layout.addWidget(self.username)
+        layout.addWidget(ok_button)
+
+        # Set the layout for the dialog
+        self.setLayout(layout)
+
+    def getUsername(self):
+        return self.username.text()
 
 class CameraWorker(QtCore.QObject):
     upload = QtCore.pyqtSignal(str)
@@ -60,6 +85,10 @@ class CameraWorker(QtCore.QObject):
         self.model_helper = model_helper
         self.display_helper = display_helper
         self.feed = feed
+
+        # Create UUID corresponding to this specific run of fasteners.
+        self.fastener_uuid = uuid.uuid4()
+        self.fastener_directory = self.setup_fastener_directory(self.fastener_uuid)
 
     def create_label_json(self, unique_id):
         """Creates json label for specific imaging run. any variables not entered into the GUI will be `None`."""
@@ -84,7 +113,7 @@ class CameraWorker(QtCore.QObject):
             "world": "real",
             "platform_version": IMAGING_STATION_VERSION,
             "platform_configuration": IMAGING_STATION_CONFIGURATION,
-            "time": datetime.now().strftime("%d_%m_%y_%h_%m_%s"),
+            "time": datetime.now().strftime("%s"),
             "fastener_type": self.app.filename_variables["type"].lower(),
             "measurement_system": self.app.filename_variables["standard"].lower(),
             "topdown_included": TOPDOWN_INCLUDED,
@@ -94,35 +123,31 @@ class CameraWorker(QtCore.QObject):
         }
         if label_json["fastener_type"] == "screw":
             attributes = {
-                "length": str(self.app.filename_variables["length"] + " " + len_units),
-                "diameter": str(self.app.filename_variables["diameter"] + " " + dia_units),
-                "pitch": str(self.app.filename_variables["pitch"] + " " + pitch_units),
-                "head": self.app.filename_variables["head"],
-                "drive": self.app.filename_variables["drive"],
-                "direction": self.app.filename_variables["direction"],
-                "material": self.app.filename_variables["material"],
-                "finish": self.app.filename_variables["finish"]
+                "length": str(self.app.filename_variables["length"]) + " " + len_units,
+                "diameter": str(self.app.filename_variables["diameter"]) + " " + dia_units,
+                "pitch": str(self.app.filename_variables["pitch"]) + " " + pitch_units,
+                "head": self.app.filename_variables["head"].lower(),
+                "drive": self.app.filename_variables["drive"].lower(),
+                "direction": self.app.filename_variables["direction"].lower(),
+                "finish": self.app.filename_variables["finish"].lower()
             }
         elif label_json["fastener_type"] == "washer":
             attributes = {
-                "height": str(self.app.filename_variables["height"] + " " + ht_units),
-                "inner_diameter": str(self.app.filename_variables["inner_diameter"] + " " + dia_units),
-                "outer_diameter": str(self.app.filename_variables["outer_diameter"] + " " + dia_units),
-                "material": self.app.filename_variables["material"],
-                "finish": self.app.filename_variables["finish"],
-                "subtype": self.app.filename_variables["subtype"]
+                "height": str(self.app.filename_variables["height"]) + " " + ht_units,
+                "inner_diameter": str(self.app.filename_variables["inner_diameter"]) + " " + dia_units,
+                "outer_diameter": str(self.app.filename_variables["outer_diameter"]) + " " + dia_units,
+                "finish": self.app.filename_variables["finish"].lower(),
+                "subtype": self.app.filename_variables["subtype"].lower()
             }
         elif label_json["fastener_type"] == "nut":
-            # TODO finish this spec
             attributes = {
-                "width":str(self.app.filename_variables["width"] + " " + wd_units),
-                "height": str(self.app.filename_variables["height"] + " " + ht_units),
-                "diameter": str(self.app.filename_variables["diameter"] + " " + dia_units),
-                "pitch": str(self.app.filename_variables["pitch"] + " " + pitch_units),
-                "direction": self.app.filename_variables["direction"],
-                "material": self.app.filename_variables["material"],
-                "finish": self.app.filename_variables["finish"],
-                "subtype": self.app.filename_variables["subtype"]
+                "width":str(self.app.filename_variables["width"]) + " " + wd_units,
+                "height": str(self.app.filename_variables["height"]) + " " + ht_units,
+                "diameter": str(self.app.filename_variables["diameter"]) + " " + dia_units,
+                "pitch": str(self.app.filename_variables["pitch"]) + " " + pitch_units,
+                "direction": self.app.filename_variables["direction"].lower(),
+                "finish": self.app.filename_variables["finish"].lower(),
+                "subtype": self.app.filename_variables["subtype"].lower()
             }
         label_json["attributes"] = attributes
 
@@ -133,7 +158,10 @@ class CameraWorker(QtCore.QObject):
         return label_json
 
     def setup_fastener_directory(self, fastener_uuid):
-        # make unique uuid for each fastener that's imaged
+        """Create directory and JSON for a single imaging run.
+        This directory is created within the session directory -- each imaging run within the session has its own
+        folder, which is generated in this function."""
+        assert(FULL_SESSION_PATH != "")
         fastener_directory = os.path.join(FULL_SESSION_PATH, "real_" + self.filename + "_" + str(fastener_uuid))
         os.mkdir(fastener_directory)
 
@@ -144,49 +172,7 @@ class CameraWorker(QtCore.QObject):
             json.dump(label_json, file_obj)
         return fastener_directory
 
-    def setup_imaging_directory(self):
-        if not os.path.exists(TOP_IMAGES_FOLDER):
-            os.mkdir(TOP_IMAGES_FOLDER)
-
-        date = datetime.now().strftime("%y_%m_%d_%H_%M_%S")
-        # TODO implement operator name in the GUI
-        operator_name = "KenTodo"
-        session_name = f"real_img_ses_v{IMAGING_STATION_VERSION}_c{IMAGING_STATION_CONFIGURATION}_{date}_{operator_name}"
-        global FULL_SESSION_PATH
-        FULL_SESSION_PATH = os.path.join(TOP_IMAGES_FOLDER, session_name)
-        os.mkdir(FULL_SESSION_PATH)
-
-    def create_report_md(self):
-        report_name = "report.md"
-        #TODO be able to write notes into here from GUI. These contents should get flushed to txt periodically.
-        report_string = """# Imaging Session Report
-# ===
-# Imaging Station Version: 1.0
-# Imaging Station Configuration: 0
-# Date: October 10, 2023
-# Start Time: t0
-# End Time: t1
-# Operator: Grayson King
-# Operator Notes:
-# * Note 1
-# * Note 2
-# Other Notes:
-# * Note 3
-# * Note 4
-"""
-        with open(os.path.join(FULL_SESSION_PATH, report_name), "a") as f:
-            f.write(report_string)
-
     def run(self):
-        global FIRST_TIME_SETUP
-        if FIRST_TIME_SETUP:
-            self.setup_imaging_directory()
-            self.create_report_md()
-            FIRST_TIME_SETUP = False
-        
-        fastener_uuid = uuid.uuid4()
-        fastener_directory = self.setup_fastener_directory(fastener_uuid)
-
         # Calibrate camera before starting camera loop
         print("before")
         self.change_camera_settings.emit(CAMERA, self.top_down_exposure_us, self.top_down_balance_red, self.top_down_balance_blue)
@@ -249,7 +235,7 @@ class CameraWorker(QtCore.QObject):
                             self.progress.emit(frame_cv2)
                             print("Done Drawing")
                             final_filename = os.path.join(
-                                fastener_directory, f"{n}_{fastener_uuid}.tiff")
+                                self.fastener_directory, f"{n}_{self.fastener_uuid}.tiff")
                             print(final_filename)
                             cv2.imwrite(final_filename, frame_cv2)
                             n += 1
@@ -261,18 +247,67 @@ class CameraWorker(QtCore.QObject):
                     # exit the control loop
                     break
 
-        self.upload.emit(fastener_directory)
+        self.upload.emit(self.fastener_directory)
+        self.finished.emit()
+
+class UploadWorker(QtCore.QObject):
+    """Class designed for use in a thread to upload imaging runs from the station to the cloud."""
+    finished = QtCore.pyqtSignal()
+
+    def __init__(self, local_directory: str, remote_directory: str):
+        """local_top_directory: folder containing all past sessions
+            remote_top_directory: cloud folder containing all uploaded sessions"""
+        super(UploadWorker, self).__init__()
+        self.local_directory = local_directory
+        self.remote_directory = remote_directory
+
+        # check that these directories exist
+        if not os.path.exists(local_directory):
+            raise Exception(f"Could not create upload thread, {local_directory} not found")
+
+    def run(self):
+        print(f"Uploading to Drive. Remote drive path: {self.remote_directory}")
+        print(f"On-device path: {self.local_directory}")
+        try:
+            # .copy() compares local_directory to remote_directory, only changing files that are different.
+            # rclone.copy() uploads all top-level folders in self.local_directory as top-level folders in self.remote_directory.
+            rclone.copy(self.local_directory, self.remote_directory)
+        except UnicodeDecodeError as uni_e:
+            print(str(uni_e))
+            print("Error. Wait a few seconds and click 'Upload to Google Drive' again.")
+            print("If upload continues to fail after multiple retries, try typing this into your command line:")
+            print(f"rclone copy {self.local_directory} {self.remote_directory}")
+            return
+            # Kenneth commentary: I think it's something to do with the image data not getting flushed to the file, so the copy() function finds files that are empty.
+            # I find that it always works after I retry a few times, so it's not a high-prio bug.
+        except Exception as e:
+            print(str(e))
+            return
+        print(f"Entire upload complete")
         self.finished.emit()
 
 
+
 class My_App(QtWidgets.QMainWindow):
-    def __init__(self):
+    def __init__(self, operator_name):
         super(My_App, self).__init__()
         loadUi("./data_collection.ui", self)
 
         # Dynamically create certain custom widgets and add it to layout (PyQtDesigner can't put it in natively)
         self.screw_length_imperial_double = CustomDoubleSpinBox()
         self.horizontalLayout_25.addWidget(self.screw_length_imperial_double)
+
+        # Set the date for this session
+        self.session_date = datetime.now()
+        self.operator_name = operator_name
+        if self.operator_name == "":
+            QMessageBox.warning(self, "Missing Operator Name", "Please fill out the operator name before you begin imaging.")
+            raise Exception("Operator name string is empty. Please fill out the box with alphabetical letters before continuing.")
+        self.setup_imaging_directory(self.session_date, operator_name)
+        self.fastener_record = []
+
+        # Setup quit function. Note this function should be declared after session_date and imaging_directory is made.
+        QtWidgets.QApplication.instance().aboutToQuit.connect(self.cleanupFunction)
 
         # Obtaining camera and applying default settings
         with Vimba.get_instance() as vimba:
@@ -299,7 +334,6 @@ class My_App(QtWidgets.QMainWindow):
         self.filename_variables["head"] = None
         self.filename_variables["drive"] = None
         self.filename_variables["direction"] = None
-        self.filename_variables["material"] = None
         self.filename_variables["finish"] = None
         self.filename_variables[""] = None
 
@@ -319,7 +353,6 @@ class My_App(QtWidgets.QMainWindow):
         self.NutDiameterMetricGroup.buttonClicked.connect(self.assign_diameter)
         self.NutDiameterImperialGroup.buttonClicked.connect(self.assign_diameter)
         self.NutFinishGroup.buttonClicked.connect(self.assign_finish)
-        self.NutMaterialGroup.buttonClicked.connect(self.assign_material)
         self.NutPitchMetricGroup.buttonClicked.connect(self.assign_pitch)
         self.NutPitchImperialGroup.buttonClicked.connect(self.assign_pitch)
         self.NutStandardGroup.buttonClicked.connect(
@@ -341,7 +374,6 @@ class My_App(QtWidgets.QMainWindow):
         self.ScrewHeadGroup.buttonClicked.connect(self.assign_head)
         self.screw_length_imperial_double.textChanged.connect(self.assign_length)
         self.screw_length_metric_double.textChanged.connect(self.assign_length)
-        self.ScrewMaterialGroup.buttonClicked.connect(self.assign_material)
         self.ScrewPitchMetricGroup.buttonClicked.connect(self.assign_pitch)
         self.ScrewPitchImperialGroup.buttonClicked.connect(self.assign_pitch)
         self.ScrewStandardGroup.buttonClicked.connect(
@@ -351,7 +383,6 @@ class My_App(QtWidgets.QMainWindow):
         self.WasherFinishGroup.buttonClicked.connect(self.assign_finish)
         self.washer_inner_diameter_metric_double.textChanged.connect(self.assign_inner_diameter)
         self.washer_inner_diameter_imperial_double.textChanged.connect(self.assign_inner_diameter)
-        self.WasherMaterialGroup.buttonClicked.connect(self.assign_material)
         self.washer_outer_diameter_metric_double.textChanged.connect(self.assign_outer_diameter)
         self.washer_outer_diameter_imperial_double.textChanged.connect(self.assign_outer_diameter)
         self.WasherStandardGroup.buttonClicked.connect(
@@ -360,9 +391,9 @@ class My_App(QtWidgets.QMainWindow):
         self.washer_height_imperial_double.textChanged.connect(self.assign_height)
         self.WasherTypeGroup.buttonClicked.connect(self.assign_subtype)
 
-        self.upload_single_fastener_gdrive_button.clicked.connect(self.upload_single_fastener_to_gdrive)
         self.upload_all_sessions_gdrive_button.clicked.connect(self.upload_all_sessions_to_gdrive)
         self.discard_images_button.clicked.connect(self.redo_imaging)
+        self.confirm_upload_complete.clicked.connect(self.change_upload_button_normal)
 
         self.model_helper = None
         self.display_helper = None
@@ -438,10 +469,6 @@ class My_App(QtWidgets.QMainWindow):
         self.filename_variables["inner_diameter"] = inner_diameter_text
         self.update_fastener_filename()
 
-    def assign_material(self, pressed_button):
-        self.filename_variables["material"] = pressed_button.text()
-        self.update_fastener_filename()
-
     def assign_outer_diameter(self, outer_diameter_text):
         self.filename_variables["outer_diameter"] = outer_diameter_text
         self.update_fastener_filename()
@@ -496,6 +523,67 @@ class My_App(QtWidgets.QMainWindow):
         self.filename_variables["head"] = pressed_button.text()
         self.update_fastener_filename()
 
+    def cleanupFunction(self):
+        """Closing function that is run upon normal exit.
+        Writes to necessary files."""
+        print("Performing cleanup operations...")
+        ending_time = datetime.now()
+        self.create_report_md(ending_time)
+
+    def setup_imaging_directory(self, creation_date, operator_name):
+        global TOP_IMAGES_FOLDER
+        external_drive = "/media/screwsorter/Samsung USB"
+        if os.path.exists(external_drive):
+            TOP_IMAGES_FOLDER = os.path.join(external_drive, "images")
+        else:
+            TOP_IMAGES_FOLDER = os.path.join(os.path.dirname(__file__), "images")
+
+        if not os.path.exists(TOP_IMAGES_FOLDER):
+            print(f"Creating top images folder at {TOP_IMAGES_FOLDER}")
+            os.mkdir(TOP_IMAGES_FOLDER)
+
+        filename_date = creation_date.strftime("%y_%m_%d_%H_%M_%S")
+        # replace all potential bad filename characters with underscores
+
+        session_name = f"real_img_ses_v{IMAGING_STATION_VERSION}_c{IMAGING_STATION_CONFIGURATION}_{filename_date}_{operator_name}"
+        global FULL_SESSION_PATH
+        FULL_SESSION_PATH = os.path.join(TOP_IMAGES_FOLDER, session_name)
+        print(f"Creating session images folder at {FULL_SESSION_PATH}")
+        os.mkdir(FULL_SESSION_PATH)
+
+    def sanitize_filename(self, filename):
+        # Define a regular expression pattern to match invalid filename characters
+        invalid_chars = r'[\/:*?"<>|]'
+
+        # Replace invalid characters with underscores
+        sanitized_filename = re.sub(invalid_chars, '_', filename)
+
+        return sanitized_filename
+ 
+    def create_report_md(self, end_time=None):
+        """This function is run periodically, and always upon exit, giving a summary of what was done in the session."""
+        report_name = "report.md"
+        session_notes = self.session_notes.toPlainText()
+        if end_time != None:
+            end_time_string = end_time.isoformat(sep=" ", timespec="milliseconds")
+        else:
+            end_time_string = "still_in_progress"
+        report_string = f"""# Imaging Session Report
+# ===
+# Imaging Station Version: 1.0
+# Imaging Station Configuration: 0
+# Date: {self.session_date.isoformat(sep=" ", timespec="milliseconds")}
+# Start Time: {self.session_date.isoformat(sep=" ", timespec="milliseconds")}
+# End Time: {end_time_string}
+# Operator: {self.operator_name}
+# Operator Notes:
+{session_notes}
+# Fasteners Imaged This Session:
+{self.fastener_record}
+"""
+        with open(os.path.join(FULL_SESSION_PATH, report_name), "w") as f:
+            f.write(report_string)
+
     def update_fastener_filename(self):
         current_name = ""
         for key, val in self.filename_variables.items():
@@ -531,6 +619,7 @@ class My_App(QtWidgets.QMainWindow):
                                    model_helper = self.model_helper,
                                    display_helper = self.display_helper,
                                    feed = feed, app=self)
+        self.fastener_record.append(os.path.basename(self.worker.fastener_directory))
         self.worker.moveToThread(self.camera_thread)
         # Connect signals/slots
         self.camera_thread.started.connect(self.worker.run)
@@ -539,12 +628,12 @@ class My_App(QtWidgets.QMainWindow):
         self.worker.upload.connect(self.ask_user_for_upload_decision)
         self.worker.finished.connect(self.camera_thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
+        self.worker.finished.connect(self.create_report_md)
         self.camera_thread.finished.connect(self.camera_thread.deleteLater)
         self.camera_thread.start()
 
         # switch to camera tab
         self.tabWidget.setCurrentIndex(1)
-
 
     def redo_imaging(self):
         # May contain more cleanup later
@@ -579,7 +668,6 @@ class My_App(QtWidgets.QMainWindow):
             pixmap = self.convert_cv_to_pixmap(resized_photo)
             self.camera_feed.setPixmap(pixmap)
 
-        self.DriveUploadConfirmStack.setCurrentIndex(0)
         self.tabWidget.setCurrentIndex(2)
 
         # ribbit ribbit ribbit 
@@ -593,55 +681,37 @@ class My_App(QtWidgets.QMainWindow):
         #    `                               '   
 
     def upload_all_sessions_to_gdrive(self):
-        # TODO Multithread this
-        # do an upload of all sessions. Will only push files that have changed compared to what's in the cloud.
+        """Performs an upload of all sessions. Will only push files that have changed compared to what's in the cloud."""
         image_directory = TOP_IMAGES_FOLDER
         upload_path = os.path.join(REMOTE_IMAGE_FOLDER)
-        print(f"Uploading to Drive. Path: {upload_path}")
-        print(f"On-device path: {image_directory}")
-        try:
-            rclone.copy(image_directory, upload_path)
-        except UnicodeDecodeError as uni_e:
-            print(str(uni_e))
-            print("Error. Wait a few seconds and click 'Upload to Google Drive' again. Consult code for Kenneth commentary.")
-            print("If upload continues to fail after multiple retries, try typing this into your command line:")
-            print(f"rclone copy {image_directory} {upload_path}")
-            return
-            # Kenneth commentary: I think it's something to do with the image data not getting flushed to the file, so the copy() function finds files that are empty.
-            # I find that it always works after I retry a few times, so it's not a high-prio bug.
-        except Exception as e:
-            print(str(e))
-            print("You probably need to refresh the token with rclone config. Consult the README for a guide on how to do so.")
-            return
-        print(f"Upload complete")
+
+        # Write current session's progress to report.md
+        self.create_report_md()
+        
+        # Set up thread to upload
+        self.upload_thread = QtCore.QThread()
+        self.upload_worker = UploadWorker(image_directory, upload_path)
+        self.upload_worker.moveToThread(self.upload_thread)
+        # Connect signals/slots
+        self.upload_thread.started.connect(self.upload_worker.run)
+        self.upload_worker.finished.connect(self.upload_thread.quit)
+        self.upload_worker.finished.connect(self.upload_worker.deleteLater)
+        self.upload_thread.finished.connect(self.upload_thread.deleteLater)
+        self.upload_worker.finished.connect(self.change_upload_button_success)
+
+        # Execute upload thread
+        print("Starting upload thread")
+        self.upload_thread.start()
+        self.change_upload_button_in_progress()
+    
+    def change_upload_button_in_progress(self):
         self.DriveUploadConfirmStack.setCurrentIndex(1)
 
-    def upload_single_fastener_to_gdrive(self):
-        # TODO multithread this.
-        # Split input so the gdrive only has the imaging_test_../ folder,
-        # and we don't upload the images/ parent folder too
-        image_directory = CURRENT_STAGED_IMAGE_FOLDER
-        session_folder = os.path.split(FULL_SESSION_PATH)[-1]
-        lowest_level_folder = os.path.split(image_directory)[-1]
-        upload_path = os.path.join(REMOTE_IMAGE_FOLDER, session_folder, lowest_level_folder)
-        print(f"Uploading to Drive. Path: {upload_path}")
-        print(f"On-device path: {image_directory}")
-        try:
-            rclone.copy(image_directory, upload_path)
-        except UnicodeDecodeError as uni_e:
-            print(str(uni_e))
-            print("Error. Wait a few seconds and click 'Upload to Google Drive' again. Consult code for Kenneth commentary.")
-            print("If upload continues to fail after multiple retries, try typing this into your command line:")
-            print(f"rclone copy {image_directory} {upload_path}")
-            return
-            # Kenneth commentary: I think it's something to do with the image data not getting flushed to the file, so the copy() function finds files that are empty.
-            # I find that it always works after I retry a few times, so it's not a high-prio bug.
-        except Exception as e:
-            print(str(e))
-            print("You probably need to refresh the token with rclone config. Consult the README for a guide on how to do so.")
-            return
-        print(f"Upload complete")
-        self.DriveUploadConfirmStack.setCurrentIndex(1)
+    def change_upload_button_success(self):
+        self.DriveUploadConfirmStack.setCurrentIndex(2)
+
+    def change_upload_button_normal(self):
+        self.DriveUploadConfirmStack.setCurrentIndex(0)
 
     def reset_filename_variables(self):
         # Reset variables for the next thread imaging suite
@@ -741,6 +811,13 @@ class My_App(QtWidgets.QMainWindow):
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    myApp = My_App()
-    myApp.show()
+
+    intro_dialog = IntroDialog()
+    result = intro_dialog.exec_()
+
+    if result == QtWidgets.QDialog.Accepted:
+        operator_name = intro_dialog.getUsername()
+        myApp = My_App(operator_name)
+        myApp.show()
+
     sys.exit(app.exec_())
